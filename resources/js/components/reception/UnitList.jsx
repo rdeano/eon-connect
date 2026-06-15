@@ -21,14 +21,35 @@ export default function UnitList({ units, activeUnitId, onSelectUnit }) {
         u.owner_name.toLowerCase().includes(search.toLowerCase())
     );
 
+    const totalUnread = Object.values(unreadCounts).reduce((sum, c) => sum + c, 0);
+
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             {/* Header */}
-            <Box sx={{ px: 2, pt: 2, pb: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ px: 2.5, pt: 2, pb: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Typography sx={{
+                        fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em',
+                        textTransform: 'uppercase', color: 'text.disabled',
+                    }}>
+                        Conversations
+                    </Typography>
+                    {totalUnread > 0 && (
+                        <Box sx={{
+                            minWidth: 18, height: 18, borderRadius: 9,
+                            bgcolor: 'primary.main', color: 'white',
+                            fontSize: 10, fontWeight: 700,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5,
+                        }}>
+                            {totalUnread > 99 ? '99+' : totalUnread}
+                        </Box>
+                    )}
+                </Box>
+
                 <TextField
                     size="small"
                     fullWidth
-                    placeholder="Search…"
+                    placeholder="Search units or residents…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     InputProps={{
@@ -38,17 +59,29 @@ export default function UnitList({ units, activeUnitId, onSelectUnit }) {
                             </InputAdornment>
                         ),
                     }}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f7f8fa' } }}
+                    sx={{
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: 2.5,
+                            bgcolor: '#f7f8fa',
+                            '& fieldset': { borderColor: 'transparent' },
+                            '&:hover fieldset': { borderColor: '#d0d9e8' },
+                            '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '1.5px' },
+                            boxShadow: 'none',
+                        },
+                    }}
                 />
             </Box>
+
+            <Box sx={{ borderBottom: '1px solid', borderColor: 'divider' }} />
 
             {/* List */}
             <List disablePadding sx={{ flex: 1, overflowY: 'auto' }}>
                 {filtered.length === 0 && (
                     <Box sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography variant="body2" color="text.disabled">No results</Typography>
+                        <Typography variant="body2" color="text.disabled">No results found</Typography>
                     </Box>
                 )}
+
                 {filtered.map((unit) => {
                     const unread   = unreadCounts[unit.id] || 0;
                     const isOnline = Object.values(onlineUsers).some(
@@ -62,10 +95,10 @@ export default function UnitList({ units, activeUnitId, onSelectUnit }) {
                                 onClick={() => onSelectUnit(unit.id)}
                                 sx={{
                                     px: 2, py: 1.5,
-                                    bgcolor: isActive ? 'primary.50' : 'transparent',
-                                    borderLeft: isActive ? '3px solid' : '3px solid transparent',
+                                    bgcolor: isActive ? '#e8f0fb' : 'transparent',
+                                    borderLeft: '3px solid',
                                     borderColor: isActive ? 'primary.main' : 'transparent',
-                                    '&:hover': { bgcolor: isActive ? 'primary.50' : '#f7f8fa' },
+                                    '&:hover': { bgcolor: isActive ? '#dde9f8' : '#f7f8fa' },
                                 }}
                             >
                                 <Badge
@@ -74,16 +107,18 @@ export default function UnitList({ units, activeUnitId, onSelectUnit }) {
                                     badgeContent={
                                         <Box sx={{
                                             width: 10, height: 10, borderRadius: '50%',
-                                            bgcolor: isOnline ? '#44b700' : '#bdbdbd',
+                                            bgcolor: isOnline ? '#16a34a' : '#d1d5db',
                                             border: '2px solid white',
+                                            boxShadow: isOnline ? '0 0 0 1.5px rgba(22,163,74,0.25)' : 'none',
                                         }} />
                                     }
                                 >
                                     <Avatar sx={{
-                                        width: 40, height: 40,
+                                        width: 42, height: 42,
                                         bgcolor: isActive ? 'primary.main' : '#e8edf5',
-                                        color: isActive ? 'white' : 'primary.main',
+                                        color: isActive ? 'white' : 'primary.dark',
                                         fontWeight: 700, fontSize: 13,
+                                        borderRadius: '12px',
                                     }}>
                                         {unitInitials(unit.unit_number)}
                                     </Avatar>
@@ -91,22 +126,34 @@ export default function UnitList({ units, activeUnitId, onSelectUnit }) {
 
                                 <Box sx={{ ml: 1.5, flex: 1, minWidth: 0 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Typography variant="body2" fontWeight={isActive ? 700 : 600} noWrap>
+                                        <Typography
+                                            variant="body2"
+                                            fontWeight={isActive || unread > 0 ? 700 : 600}
+                                            noWrap
+                                            sx={{ color: isActive ? 'primary.dark' : 'text.primary' }}
+                                        >
                                             Unit {unit.unit_number}
                                         </Typography>
                                         {unread > 0 && (
                                             <Box sx={{
                                                 minWidth: 20, height: 20, borderRadius: 10,
                                                 bgcolor: 'primary.main', color: 'white',
-                                                fontSize: 11, fontWeight: 700,
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                px: 0.5,
+                                                fontSize: 11, fontWeight: 700, flexShrink: 0,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5,
                                             }}>
-                                                {unread}
+                                                {unread > 99 ? '99+' : unread}
                                             </Box>
                                         )}
                                     </Box>
-                                    <Typography variant="caption" color="text.secondary" noWrap>
+                                    <Typography
+                                        variant="caption"
+                                        noWrap
+                                        sx={{
+                                            color: isOnline ? 'success.main' : 'text.secondary',
+                                            fontWeight: isOnline ? 600 : 400,
+                                            fontSize: '0.7rem',
+                                        }}
+                                    >
                                         {unit.owner_name}
                                     </Typography>
                                 </Box>

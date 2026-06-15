@@ -61,19 +61,31 @@ export default function ReceptionDashboard() {
                 </Box>
 
                 {/* Chat panel */}
-                <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                <Box sx={{ flex: 1, overflow: 'hidden', bgcolor: '#f0f4f9' }}>
                     {activeUnitId
                         ? <ReceptionChat unitId={activeUnitId} unit={activeUnit} />
                         : (
                             <Box sx={{
                                 display: 'flex', flexDirection: 'column',
                                 alignItems: 'center', justifyContent: 'center',
-                                height: '100%', gap: 1, color: 'text.disabled',
+                                height: '100%', gap: 2,
                             }}>
-                                <ForumIcon sx={{ fontSize: 40, opacity: 0.25 }} />
-                                <Typography variant="body2" color="text.disabled">
-                                    Select a unit to view messages
-                                </Typography>
+                                <Box sx={{
+                                    width: 72, height: 72, borderRadius: '20px',
+                                    bgcolor: 'white',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                }}>
+                                    <ForumIcon sx={{ fontSize: 34, color: 'primary.main', opacity: 0.5 }} />
+                                </Box>
+                                <Box sx={{ textAlign: 'center' }}>
+                                    <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
+                                        No conversation selected
+                                    </Typography>
+                                    <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 0.25 }}>
+                                        Choose a unit from the sidebar to start messaging.
+                                    </Typography>
+                                </Box>
                             </Box>
                         )
                     }
