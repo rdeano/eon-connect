@@ -29,7 +29,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/conversations',           [ConversationController::class, 'index']);
         Route::get('/conversations/{unitId}',  [ConversationController::class, 'show']);
         Route::post('/conversations/{unitId}', [MessageController::class, 'store']);
-        Route::patch('/messages/{message}/read', [MessageController::class, 'markRead']);
+        Route::patch('/messages/{message}/read',      [MessageController::class, 'markRead']);
+        Route::patch('/conversations/{unitId}/read', [MessageController::class, 'markAllRead']);
 
         // Push notifications
         Route::post('/push/subscribe', [PushController::class, 'subscribe']);

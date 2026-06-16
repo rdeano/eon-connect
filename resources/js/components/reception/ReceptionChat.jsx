@@ -25,7 +25,7 @@ export default function ReceptionChat({ unitId, unit }) {
     const [input,   setInput]   = useState('');
     const [sending, setSending] = useState(false);
     const bottomRef = useRef(null);
-    const { messages, setMessages, addMessage } = useChatStore();
+    const { messages, setMessages, addMessage, markUnitMessagesRead } = useChatStore();
     const { user }        = useAuthStore();
     const { onlineUsers } = usePresenceStore();
     const unitMessages    = messages[unitId] || [];
@@ -37,6 +37,9 @@ export default function ReceptionChat({ unitId, unit }) {
     useEffect(() => {
         api.get(`/conversations/${unitId}`).then((res) => {
             setMessages(unitId, res.data.data);
+            api.patch(`/conversations/${unitId}/read`).then(() => {
+                markUnitMessagesRead(unitId, user?.id);
+            });
         });
     }, [unitId]);
 

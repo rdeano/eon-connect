@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import ForumIcon from '@mui/icons-material/Forum';
 import UnitList from './UnitList';
@@ -11,8 +11,11 @@ import echo from '../../echo';
 
 export default function ReceptionDashboard() {
     const [units, setUnits] = useState([]);
-    const { activeUnitId, setActiveUnit, addMessage, setUnreadCount } = useChatStore();
+    const { activeUnitId, setActiveUnit, addMessage, setUnreadCount, incrementUnread } = useChatStore();
     const { setAll, setOnline, setOffline } = usePresenceStore();
+
+    const activeUnitIdRef = useRef(activeUnitId);
+    useEffect(() => { activeUnitIdRef.current = activeUnitId; }, [activeUnitId]);
 
     const activeUnit = units.find((u) => u.id === activeUnitId) || null;
 
@@ -32,11 +35,20 @@ export default function ReceptionDashboard() {
     }, []);
 
     useEffect(() => {
-        if (!activeUnitId) return;
-        echo.private(`conversation.${activeUnitId}`)
-            .listen('MessageSent', (e) => addMessage(activeUnitId, e));
-        return () => echo.leave(`conversation.${activeUnitId}`);
-    }, [activeUnitId]);
+        if (!units.length) return;
+        units.forEach((unit) => {
+            echo.private(`conversation.${unit.id}`)
+                .listen('MessageSent', (e) => {
+                    const msg = e.message ?? e;
+                    if (activeUnitIdRef.current === unit.id) {
+                        addMessage(unit.id, msg);
+                    } else {
+                        incrementUnread(unit.id);
+                    }
+                });
+        });
+        return () => units.forEach((unit) => echo.leave(`conversation.${unit.id}`));
+    }, [units]);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>

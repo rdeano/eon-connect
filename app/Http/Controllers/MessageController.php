@@ -50,4 +50,14 @@ class MessageController extends Controller
 
         return response()->json(['data' => $message]);
     }
+
+    public function markAllRead(Request $request, int $unitId): JsonResponse
+    {
+        Message::where('unit_id', $unitId)
+            ->where('receiver_id', $request->user()->id)
+            ->where('status', '!=', 'read')
+            ->update(['status' => 'read', 'read_at' => now()]);
+
+        return response()->json(['message' => 'OK']);
+    }
 }
