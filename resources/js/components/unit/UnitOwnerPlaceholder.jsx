@@ -1,13 +1,20 @@
+import { useEffect } from 'react';
 import { Box, Typography, Paper, Button } from '@mui/material';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import useAuthStore from '../../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import echo from '../../echo';
 
 export default function UnitOwnerPlaceholder() {
     const { logout } = useAuthStore();
     const navigate   = useNavigate();
+
+    useEffect(() => {
+        echo.join('presence.building');
+        return () => echo.leave('presence.building');
+    }, []);
 
     const handleLogout = async () => {
         try { await api.post('/auth/logout'); } catch {}
