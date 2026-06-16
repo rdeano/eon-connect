@@ -4,47 +4,46 @@ import {
     TextField, Badge, Avatar, InputAdornment,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 import useChatStore from '../../stores/useChatStore';
 import usePresenceStore from '../../stores/usePresenceStore';
+import useAuthStore from '../../stores/useAuthStore';
 
 function unitInitials(unitNumber) {
     return unitNumber?.slice(0, 2).toUpperCase() || '?';
 }
 
+function formatLastTime(ts) {
+    if (!ts) return '';
+    const d   = new Date(ts);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
 export default function UnitList({ units, activeUnitId, onSelectUnit }) {
     const [search, setSearch] = useState('');
-    const { unreadCounts } = useChatStore();
-    const { onlineUsers }  = usePresenceStore();
+    const { unreadCounts, messages } = useChatStore();
+    const { onlineUsers }            = usePresenceStore();
+    const { user }                   = useAuthStore();
 
     const filtered = units.filter((u) =>
         u.unit_number.toLowerCase().includes(search.toLowerCase()) ||
         u.owner_name.toLowerCase().includes(search.toLowerCase())
     );
 
-    const totalUnread = Object.values(unreadCounts).reduce((sum, c) => sum + c, 0);
-
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             {/* Header */}
             <Box sx={{ px: 2.5, pt: 2, pb: 1.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                    <Typography sx={{
-                        fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em',
-                        textTransform: 'uppercase', color: 'text.disabled',
-                    }}>
-                        Conversations
-                    </Typography>
-                    {totalUnread > 0 && (
-                        <Box sx={{
-                            minWidth: 18, height: 18, borderRadius: 9,
-                            bgcolor: 'primary.main', color: 'white',
-                            fontSize: 10, fontWeight: 700,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5,
-                        }}>
-                            {totalUnread > 99 ? '99+' : totalUnread}
-                        </Box>
-                    )}
-                </Box>
+                <Typography sx={{
+                    fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em',
+                    textTransform: 'uppercase', color: 'text.disabled', mb: 1.5,
+                }}>
+                    Conversations
+                </Typography>
 
                 <TextField
                     size="small"
@@ -89,6 +88,15 @@ export default function UnitList({ units, activeUnitId, onSelectUnit }) {
                     );
                     const isActive = activeUnitId === unit.id;
 
+                    // Prefer live store messages, fall back to API-loaded last message
+                    const storeMessages = messages[unit.id];
+                    const lastMsg = storeMessages?.length > 0
+                        ? storeMessages[storeMessages.length - 1]
+                        : unit.messages?.[0];
+
+                    const isSentByMe = lastMsg?.sender_id === user?.id;
+                    const isSeen     = lastMsg?.status === 'read';
+
                     return (
                         <ListItem key={unit.id} disablePadding>
                             <ListItemButton
@@ -125,37 +133,56 @@ export default function UnitList({ units, activeUnitId, onSelectUnit }) {
                                 </Badge>
 
                                 <Box sx={{ ml: 1.5, flex: 1, minWidth: 0 }}>
+                                    {/* Row 1: unit number + timestamp */}
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Typography
                                             variant="body2"
-                                            fontWeight={isActive || unread > 0 ? 700 : 600}
+                                            fontWeight={unread > 0 ? 700 : 600}
                                             noWrap
                                             sx={{ color: isActive ? 'primary.dark' : 'text.primary' }}
                                         >
                                             Unit {unit.unit_number}
                                         </Typography>
-                                        {unread > 0 && (
-                                            <Box sx={{
-                                                minWidth: 20, height: 20, borderRadius: 10,
-                                                bgcolor: 'primary.main', color: 'white',
-                                                fontSize: 11, fontWeight: 700, flexShrink: 0,
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5,
+                                        {lastMsg && (
+                                            <Typography sx={{
+                                                fontSize: '0.65rem',
+                                                color: unread > 0 ? 'primary.main' : 'text.disabled',
+                                                fontWeight: unread > 0 ? 600 : 400,
+                                                flexShrink: 0, ml: 1,
                                             }}>
-                                                {unread > 99 ? '99+' : unread}
-                                            </Box>
+                                                {formatLastTime(lastMsg.created_at)}
+                                            </Typography>
                                         )}
                                     </Box>
-                                    <Typography
-                                        variant="caption"
-                                        noWrap
-                                        sx={{
-                                            color: isOnline ? 'success.main' : 'text.secondary',
-                                            fontWeight: isOnline ? 600 : 400,
-                                            fontSize: '0.7rem',
-                                        }}
-                                    >
-                                        {unit.owner_name}
-                                    </Typography>
+
+                                    {/* Row 2: last message preview + seen/unread indicator */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.15 }}>
+                                        <Typography
+                                            variant="caption"
+                                            noWrap
+                                            sx={{
+                                                flex: 1,
+                                                color: unread > 0 ? 'text.primary' : 'text.secondary',
+                                                fontWeight: unread > 0 ? 600 : 400,
+                                                fontSize: '0.7rem',
+                                            }}
+                                        >
+                                            {lastMsg ? lastMsg.body : unit.owner_name}
+                                        </Typography>
+
+                                        {unread > 0 ? (
+                                            <Box sx={{
+                                                width: 8, height: 8, borderRadius: '50%',
+                                                bgcolor: 'primary.main', flexShrink: 0,
+                                            }} />
+                                        ) : isSentByMe && lastMsg ? (
+                                            <DoneAllIcon sx={{
+                                                fontSize: 13,
+                                                color: isSeen ? 'primary.main' : '#bdbdbd',
+                                                flexShrink: 0,
+                                            }} />
+                                        ) : null}
+                                    </Box>
                                 </Box>
                             </ListItemButton>
                         </ListItem>
