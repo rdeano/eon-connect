@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
     Box, List, ListItem, ListItemButton, Typography,
-    TextField, Badge, Avatar, InputAdornment,
+    TextField, Badge, Avatar, InputAdornment, Tooltip,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
@@ -176,11 +176,13 @@ export default function UnitList({ units, activeUnitId, onSelectUnit }) {
                                                 bgcolor: 'primary.main', flexShrink: 0,
                                             }} />
                                         ) : isSentByMe && lastMsg ? (
-                                            <DoneAllIcon sx={{
-                                                fontSize: 13,
-                                                color: isSeen ? 'primary.main' : '#bdbdbd',
-                                                flexShrink: 0,
-                                            }} />
+                                            <Tooltip title={isSeen ? 'Seen' : 'Sent'}>
+                                                <DoneAllIcon sx={{
+                                                    fontSize: 13,
+                                                    color: isSeen ? 'primary.main' : '#bdbdbd',
+                                                    flexShrink: 0,
+                                                }} />
+                                            </Tooltip>
                                         ) : null}
                                     </Box>
                                 </Box>

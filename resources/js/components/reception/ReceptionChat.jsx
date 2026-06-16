@@ -170,7 +170,9 @@ export default function ReceptionChat({ unitId, unit }) {
                                                 {formatTime(msg.created_at)}
                                             </Typography>
                                             {isSent && (
-                                                <DoneAllIcon sx={{ fontSize: 11, color: msg.status === 'read' ? 'primary.main' : '#bdbdbd' }} />
+                                                <Tooltip title={msg.status === 'read' ? 'Seen' : 'Sent'}>
+                                                    <DoneAllIcon sx={{ fontSize: 11, color: msg.status === 'read' ? 'primary.main' : '#bdbdbd' }} />
+                                                </Tooltip>
                                             )}
                                         </Box>
                                     </Box>
