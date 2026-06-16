@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\MessageSent;
+use App\Events\MessagesRead;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -53,10 +54,18 @@ class MessageController extends Controller
 
     public function markAllRead(Request $request, int $unitId): JsonResponse
     {
-        Message::where('unit_id', $unitId)
+        $updated = Message::where('unit_id', $unitId)
             ->where('receiver_id', $request->user()->id)
             ->where('status', '!=', 'read')
             ->update(['status' => 'read', 'read_at' => now()]);
+
+        if ($updated > 0) {
+            try {
+                broadcast(new MessagesRead($unitId, $request->user()->id))->toOthers();
+            } catch (\Throwable) {
+                // Reverb unreachable — read status is saved, real-time notice skipped
+            }
+        }
 
         return response()->json(['message' => 'OK']);
     }
