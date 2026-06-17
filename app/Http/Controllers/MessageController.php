@@ -44,9 +44,12 @@ class MessageController extends Controller
                     ->withNotification(Notification::create($user->name, $message->body))
                     ->withData(['unit_id' => (string) $unitId]);
                 app(Messaging::class)->send($fcmMessage);
-            } catch (\Throwable) {
-                // FCM unreachable — message is saved, push skipped
+                \Log::info('[FCM] push sent to user ' . $receiver->id);
+            } catch (\Throwable $e) {
+                \Log::error('[FCM] push failed: ' . $e->getMessage());
             }
+        } else {
+            \Log::warning('[FCM] receiver ' . $receiver->id . ' has no fcm_token');
         }
 
         return response()->json(['data' => $message->load('sender'), 'message' => 'Sent'], 201);
