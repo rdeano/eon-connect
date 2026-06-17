@@ -10,7 +10,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Messaging\CloudMessage;
-use Kreait\Firebase\Messaging\Notification;
 
 class MessageController extends Controller
 {
@@ -42,8 +41,11 @@ class MessageController extends Controller
             try {
                 $fcmMessage = CloudMessage::new()
                     ->withToken($receiver->fcm_token)
-                    ->withNotification(Notification::create($user->name, $message->body))
-                    ->withData(['unit_id' => (string) $unitId]);
+                    ->withData([
+                        'unit_id' => (string) $unitId,
+                        'title'   => $user->name,
+                        'body'    => $message->body,
+                    ]);
                 app(Messaging::class)->send($fcmMessage);
                 \Log::info('[FCM] push sent to user ' . $receiver->id);
             } catch (\Throwable $e) {
