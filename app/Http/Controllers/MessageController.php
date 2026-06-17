@@ -8,6 +8,9 @@ use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Kreait\Firebase\Contract\Messaging;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 
 class MessageController extends Controller
 {
@@ -33,6 +36,17 @@ class MessageController extends Controller
             broadcast(new MessageSent($message))->toOthers();
         } catch (\Throwable) {
             // Reverb unreachable — message is saved, real-time delivery skipped
+        }
+
+        if ($receiver->fcm_token) {
+            try {
+                $fcmMessage = CloudMessage::withTarget('token', $receiver->fcm_token)
+                    ->withNotification(Notification::create($user->name, $message->body))
+                    ->withData(['unit_id' => (string) $unitId]);
+                app(Messaging::class)->send($fcmMessage);
+            } catch (\Throwable) {
+                // FCM unreachable — message is saved, push skipped
+            }
         }
 
         return response()->json(['data' => $message->load('sender'), 'message' => 'Sent'], 201);
