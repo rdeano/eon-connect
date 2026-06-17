@@ -40,7 +40,8 @@ class MessageController extends Controller
 
         if ($receiver->fcm_token) {
             try {
-                $fcmMessage = CloudMessage::withTarget('token', $receiver->fcm_token)
+                $fcmMessage = CloudMessage::new()
+                    ->withToken($receiver->fcm_token)
                     ->withNotification(Notification::create($user->name, $message->body))
                     ->withData(['unit_id' => (string) $unitId]);
                 app(Messaging::class)->send($fcmMessage);
