@@ -91,6 +91,10 @@ export default function ReceptionChat({ unitId, unit }) {
             const res = await api.post('/calls/token', { unit_id: unitId });
             const { token, livekit_url } = res.data;
 
+            // Send invite first so the callee rings immediately,
+            // regardless of how long our own room connection takes.
+            await api.post('/calls/invite', { unit_id: unitId });
+
             const room = new Room({ adaptiveStream: true, dynacast: true });
 
             room.on(RoomEvent.Disconnected, () => {
@@ -104,9 +108,6 @@ export default function ReceptionChat({ unitId, unit }) {
 
             callStore.setRoom(room);
             callStore.setActive();
-
-            // Invite after connecting so the room exists
-            await api.post('/calls/invite', { unit_id: unitId });
         } catch (e) {
             console.error('[Call] start failed:', e);
             useCallStore.getState().reset();

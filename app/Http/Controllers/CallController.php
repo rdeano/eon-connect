@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Kreait\Firebase\Contract\Messaging;
+use Kreait\Firebase\Messaging\AndroidConfig;
+use Kreait\Firebase\Messaging\ApnsConfig;
 use Kreait\Firebase\Messaging\CloudMessage;
 
 class CallController extends Controller
@@ -88,6 +90,14 @@ class CallController extends Controller
                             'livekit_url' => config('services.livekit.url'),
                             'caller_name' => $user->name,
                         ])
+                        ->withAndroidConfig(
+                            AndroidConfig::new()->withHighMessagePriority()
+                        )
+                        ->withApnsConfig(
+                            ApnsConfig::new()
+                                ->withApsField('content-available', 1)
+                                ->withImmediatePriority()
+                        )
                 );
             } catch (\Throwable $e) {
                 \Log::error('[FCM] call invite failed: ' . $e->getMessage());
