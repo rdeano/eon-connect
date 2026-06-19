@@ -1,39 +1,63 @@
 import { useEffect, useRef, useState } from 'react';
-import { Box, TextField, Typography, Stack, Avatar, IconButton, Tooltip, CircularProgress } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
-import DoneAllIcon from '@mui/icons-material/DoneAll';
+import {
+    Box, TextField, Typography, Stack, Avatar,
+    IconButton, Tooltip, CircularProgress, Chip,
+} from '@mui/material';
+import SendIcon     from '@mui/icons-material/Send';
+import DoneAllIcon  from '@mui/icons-material/DoneAll';
+import CallIcon     from '@mui/icons-material/Call';
+import CallEndIcon  from '@mui/icons-material/CallEnd';
+import MicIcon      from '@mui/icons-material/Mic';
+import MicOffIcon   from '@mui/icons-material/MicOff';
+import { Room, RoomEvent } from 'livekit-client';
 import api from '../../services/api';
-import useChatStore from '../../stores/useChatStore';
-import useAuthStore from '../../stores/useAuthStore';
+import useChatStore  from '../../stores/useChatStore';
+import useAuthStore  from '../../stores/useAuthStore';
 import usePresenceStore from '../../stores/usePresenceStore';
+import useCallStore  from '../../stores/useCallStore';
 
 function formatTime(ts) {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDate(ts) {
-    const d = new Date(ts);
-    const today = new Date();
-    if (d.toDateString() === today.toDateString()) return 'Today';
+    const d         = new Date(ts);
+    const today     = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString())     return 'Today';
     if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
     return d.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
+function formatDuration(secs) {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export default function ReceptionChat({ unitId, unit }) {
-    const [input,   setInput]   = useState('');
-    const [sending, setSending] = useState(false);
-    const bottomRef = useRef(null);
+    const [input,       setInput]       = useState('');
+    const [sending,     setSending]     = useState(false);
+    const [callSeconds, setCallSeconds] = useState(0);
+    const bottomRef  = useRef(null);
+    const timerRef   = useRef(null);
+
     const { messages, setMessages, addMessage, markUnitMessagesRead } = useChatStore();
     const { user }        = useAuthStore();
     const { onlineUsers } = usePresenceStore();
-    const unitMessages    = messages[unitId] || [];
+    const callStore       = useCallStore();
 
-    const isOwnerOnline = unit?.owner
+    const unitMessages    = messages[unitId] || [];
+    const isOwnerOnline   = unit?.owner
         ? Object.values(onlineUsers).some((u) => u.id === unit.owner.id)
         : false;
 
+    // Is the current active call with THIS unit?
+    const isThisUnitOnCall = callStore.unitId === unitId &&
+        (callStore.status === 'calling' || callStore.status === 'active');
+
+    // Load messages when unit changes
     useEffect(() => {
         api.get(`/conversations/${unitId}`).then((res) => {
             setMessages(unitId, res.data.data);
@@ -43,9 +67,66 @@ export default function ReceptionChat({ unitId, unit }) {
         });
     }, [unitId]);
 
+    // Scroll to bottom on new messages
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [unitMessages]);
+
+    // Call duration timer
+    useEffect(() => {
+        if (isThisUnitOnCall && callStore.status === 'active') {
+            setCallSeconds(0);
+            timerRef.current = setInterval(() => setCallSeconds((s) => s + 1), 1000);
+        } else {
+            clearInterval(timerRef.current);
+            setCallSeconds(0);
+        }
+        return () => clearInterval(timerRef.current);
+    }, [isThisUnitOnCall, callStore.status]);
+
+    const handleCall = async () => {
+        if (callStore.status !== 'idle') return;
+        callStore.setCalling(unitId);
+        try {
+            const res = await api.post('/calls/token', { unit_id: unitId });
+            const { token, livekit_url } = res.data;
+
+            const room = new Room({ adaptiveStream: true, dynacast: true });
+
+            room.on(RoomEvent.Disconnected, () => {
+                if (useCallStore.getState().room === room) {
+                    useCallStore.getState().reset();
+                }
+            });
+
+            await room.connect(livekit_url, token);
+            await room.localParticipant.setMicrophoneEnabled(true);
+
+            callStore.setRoom(room);
+            callStore.setActive();
+
+            // Invite after connecting so the room exists
+            await api.post('/calls/invite', { unit_id: unitId });
+        } catch (e) {
+            console.error('[Call] start failed:', e);
+            useCallStore.getState().reset();
+        }
+    };
+
+    const handleEndCall = async () => {
+        const { room, unitId: cUnitId } = useCallStore.getState();
+        useCallStore.getState().reset();         // clears store first → Disconnected listener is a no-op
+        if (room) { try { room.disconnect(); } catch {} }
+        try { await api.post('/calls/end', { unit_id: cUnitId }); } catch {}
+    };
+
+    const handleToggleMute = async () => {
+        const { room, isMuted } = useCallStore.getState();
+        if (!room) return;
+        const next = !isMuted;
+        await room.localParticipant.setMicrophoneEnabled(!next);
+        callStore.setMuted(next);
+    };
 
     const sendMessage = async () => {
         if (!input.trim()) return;
@@ -67,7 +148,8 @@ export default function ReceptionChat({ unitId, unit }) {
 
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#f0f4f9' }}>
-            {/* Chat header */}
+
+            {/* ── Chat header ─────────────────────────────────────────────── */}
             <Box sx={{
                 px: 3, py: 1.5,
                 bgcolor: 'white',
@@ -111,9 +193,84 @@ export default function ReceptionChat({ unitId, unit }) {
                         </Typography>
                     </Box>
                 </Box>
+
+                {/* ── Call controls ─────────────────────────────────────── */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                    {isThisUnitOnCall && callStore.status === 'active' && (
+                        <>
+                            {/* Duration chip */}
+                            <Chip
+                                label={formatDuration(callSeconds)}
+                                size="small"
+                                sx={{
+                                    bgcolor: 'success.50', color: 'success.dark',
+                                    fontWeight: 700, fontSize: '0.75rem',
+                                    height: 26,
+                                }}
+                            />
+
+                            {/* Mute toggle */}
+                            <Tooltip title={callStore.isMuted ? 'Unmute' : 'Mute'}>
+                                <IconButton
+                                    size="small"
+                                    onClick={handleToggleMute}
+                                    sx={{
+                                        bgcolor: callStore.isMuted ? 'warning.100' : 'grey.100',
+                                        color:   callStore.isMuted ? 'warning.dark' : 'text.secondary',
+                                        '&:hover': { bgcolor: callStore.isMuted ? 'warning.200' : 'grey.200' },
+                                        width: 34, height: 34,
+                                    }}
+                                >
+                                    {callStore.isMuted ? <MicOffIcon fontSize="small" /> : <MicIcon fontSize="small" />}
+                                </IconButton>
+                            </Tooltip>
+
+                            {/* End call */}
+                            <Tooltip title="End call">
+                                <IconButton
+                                    size="small"
+                                    onClick={handleEndCall}
+                                    sx={{
+                                        bgcolor: 'error.main', color: 'white',
+                                        '&:hover': { bgcolor: 'error.dark' },
+                                        width: 34, height: 34,
+                                    }}
+                                >
+                                    <CallEndIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        </>
+                    )}
+
+                    {isThisUnitOnCall && callStore.status === 'calling' && (
+                        <Chip
+                            icon={<CircularProgress size={12} color="inherit" />}
+                            label="Calling…"
+                            size="small"
+                            sx={{ bgcolor: 'primary.50', color: 'primary.dark', fontWeight: 600, height: 26 }}
+                        />
+                    )}
+
+                    {/* Call button — only shown when no call is active for any unit */}
+                    {callStore.status === 'idle' && (
+                        <Tooltip title="Start voice call">
+                            <IconButton
+                                size="small"
+                                onClick={handleCall}
+                                sx={{
+                                    bgcolor: 'success.main', color: 'white',
+                                    '&:hover': { bgcolor: 'success.dark' },
+                                    width: 34, height: 34,
+                                }}
+                            >
+                                <CallIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Box>
             </Box>
 
-            {/* Messages */}
+            {/* ── Messages ────────────────────────────────────────────────── */}
             <Box sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2.5 }}>
                 {unitMessages.length === 0 && (
                     <Box sx={{ textAlign: 'center', mt: 8 }}>
@@ -143,16 +300,13 @@ export default function ReceptionChat({ unitId, unit }) {
                                         </Typography>
                                     </Box>
                                 )}
-
                                 <Box sx={{ display: 'flex', justifyContent: isSent ? 'flex-end' : 'flex-start', mb: 0.75 }}>
                                     <Box sx={{ maxWidth: '65%' }}>
                                         <Box sx={{
                                             px: 2.5, py: 1.25,
                                             bgcolor: isSent ? 'primary.main' : 'white',
                                             color: isSent ? 'white' : 'text.primary',
-                                            borderRadius: isSent
-                                                ? '18px 18px 4px 18px'
-                                                : '18px 18px 18px 4px',
+                                            borderRadius: isSent ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                                             boxShadow: isSent
                                                 ? '0 2px 8px rgba(26,86,160,0.22)'
                                                 : '0 1px 4px rgba(0,0,0,0.08)',
@@ -184,7 +338,7 @@ export default function ReceptionChat({ unitId, unit }) {
                 </Stack>
             </Box>
 
-            {/* Input */}
+            {/* ── Input ───────────────────────────────────────────────────── */}
             <Box sx={{
                 px: 2.5, py: 2,
                 bgcolor: 'white',
@@ -212,7 +366,6 @@ export default function ReceptionChat({ unitId, unit }) {
                             '& fieldset': { borderColor: '#e2e8f0' },
                             '&:hover fieldset': { borderColor: '#c0cfe8' },
                             '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '1.5px' },
-                            boxShadow: 'none',
                         },
                     }}
                 />
@@ -234,16 +387,10 @@ export default function ReceptionChat({ unitId, unit }) {
                                     background: 'linear-gradient(135deg, #2578d1 0%, #0f4489 100%)',
                                     boxShadow: '0 4px 14px rgba(26,86,160,0.35)',
                                 },
-                                '&.Mui-disabled': {
-                                    background: '#e5e7eb',
-                                    color: '#9ca3af',
-                                },
+                                '&.Mui-disabled': { background: '#e5e7eb', color: '#9ca3af' },
                             }}
                         >
-                            {sending
-                                ? <CircularProgress size={17} sx={{ color: 'inherit' }} />
-                                : <SendIcon fontSize="small" />
-                            }
+                            {sending ? <CircularProgress size={17} sx={{ color: 'inherit' }} /> : <SendIcon fontSize="small" />}
                         </IconButton>
                     </span>
                 </Tooltip>

@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import ForumIcon from '@mui/icons-material/Forum';
-import UnitList from './UnitList';
-import ReceptionChat from './ReceptionChat';
-import TopBar from '../common/TopBar';
-import api from '../../services/api';
-import useChatStore from '../../stores/useChatStore';
-import usePresenceStore from '../../stores/usePresenceStore';
-import echo from '../../echo';
+import UnitList          from './UnitList';
+import ReceptionChat     from './ReceptionChat';
+import IncomingCallDialog from './IncomingCallDialog';
+import TopBar            from '../common/TopBar';
+import api               from '../../services/api';
+import useChatStore      from '../../stores/useChatStore';
+import usePresenceStore  from '../../stores/usePresenceStore';
+import useCallStore      from '../../stores/useCallStore';
+import echo              from '../../echo';
 
 export default function ReceptionDashboard() {
     const [units, setUnits] = useState([]);
@@ -36,6 +38,7 @@ export default function ReceptionDashboard() {
 
     useEffect(() => {
         if (!units.length) return;
+
         units.forEach((unit) => {
             echo.private(`conversation.${unit.id}`)
                 .listen('MessageSent', (e) => {
@@ -45,8 +48,31 @@ export default function ReceptionDashboard() {
                     } else {
                         incrementUnread(unit.id);
                     }
+                })
+                .listen('CallInvited', async (e) => {
+                    // Unit owner is calling — get our token then show the incoming dialog
+                    try {
+                        const res = await api.post('/calls/token', { unit_id: e.unit_id });
+                        const { token, livekit_url } = res.data;
+                        useCallStore.getState().setRinging(
+                            e.unit_id, e.caller_name, token, livekit_url,
+                        );
+                    } catch (err) {
+                        console.error('[Call] failed to get token for incoming call:', err);
+                    }
+                })
+                .listen('CallEnded', (e) => {
+                    const state = useCallStore.getState();
+                    if (state.unitId === e.unit_id) {
+                        // Remote party hung up — disconnect our room (if connected) and reset
+                        if (state.room) {
+                            try { state.room.disconnect(); } catch {}
+                        }
+                        state.reset();
+                    }
                 });
         });
+
         return () => units.forEach((unit) => echo.leave(`conversation.${unit.id}`));
     }, [units]);
 
@@ -103,6 +129,9 @@ export default function ReceptionDashboard() {
                     }
                 </Box>
             </Box>
+
+            {/* Global incoming call dialog — appears over any screen state */}
+            <IncomingCallDialog />
         </Box>
     );
 }

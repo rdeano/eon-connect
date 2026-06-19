@@ -21,6 +21,7 @@
         "@vitejs/plugin-react": "^6.0.2",
         "axios": "^1.17.0",
         "laravel-echo": "^2.3.7",
+        "livekit-client": "^2.13.0",
         "pusher-js": "^8.5.0",
         "react": "^19.2.7",
         "react-dom": "^19.2.7",

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\CallController;
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PushController;
@@ -34,5 +35,10 @@ Route::prefix('v1')->group(function () {
 
         // Push notifications
         Route::post('/push/subscribe', [PushController::class, 'subscribe']);
+
+        // Voice calls (LiveKit)
+        Route::post('/calls/token',  [CallController::class, 'token']);
+        Route::post('/calls/invite', [CallController::class, 'invite']);
+        Route::post('/calls/end',    [CallController::class, 'end']);
     });
 });
