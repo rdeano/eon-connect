@@ -104,6 +104,7 @@ export default function ReceptionChat({ unitId, unit }) {
             });
 
             await room.connect(livekit_url, token);
+            await room.startAudio();
             await room.localParticipant.setMicrophoneEnabled(true);
 
             callStore.setRoom(room);

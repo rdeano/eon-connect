@@ -24,6 +24,7 @@ export default function IncomingCallDialog() {
             });
 
             await room.connect(livekitUrl, token);
+            await room.startAudio();
             await room.localParticipant.setMicrophoneEnabled(true);
 
             setRoom(room);
