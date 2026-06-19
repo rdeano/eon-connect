@@ -15,6 +15,7 @@ import useChatStore  from '../../stores/useChatStore';
 import useAuthStore  from '../../stores/useAuthStore';
 import usePresenceStore from '../../stores/usePresenceStore';
 import useCallStore  from '../../stores/useCallStore';
+import { useRingbackTone } from '../../hooks/useCallTone';
 
 function formatTime(ts) {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -56,6 +57,9 @@ export default function ReceptionChat({ unitId, unit }) {
     // Is the current active call with THIS unit?
     const isThisUnitOnCall = callStore.unitId === unitId &&
         (callStore.status === 'calling' || callStore.status === 'active');
+
+    // Play ringback tone while the call is dialling (stops automatically when active)
+    useRingbackTone(isThisUnitOnCall && callStore.status === 'calling');
 
     // Load messages when unit changes
     useEffect(() => {

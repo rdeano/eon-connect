@@ -7,10 +7,13 @@ import CallEndIcon from '@mui/icons-material/CallEnd';
 import { Room, RoomEvent } from 'livekit-client';
 import useCallStore from '../../stores/useCallStore';
 import api from '../../services/api';
+import { useRingtone } from '../../hooks/useCallTone';
 
 export default function IncomingCallDialog() {
     const [connecting, setConnecting] = useState(false);
     const { status, unitId, callerName, token, livekitUrl, setRoom, setActive, reset } = useCallStore();
+
+    useRingtone(status === 'ringing');
 
     const handleAnswer = async () => {
         setConnecting(true);
