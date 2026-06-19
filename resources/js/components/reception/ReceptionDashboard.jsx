@@ -50,7 +50,8 @@ export default function ReceptionDashboard() {
                     }
                 })
                 .listen('CallInvited', async (e) => {
-                    // Unit owner is calling — get our token then show the incoming dialog
+                    // Ignore if we're already in or initiated a call.
+                    if (useCallStore.getState().status !== 'idle') return;
                     try {
                         const res = await api.post('/calls/token', { unit_id: e.unit_id });
                         const { token, livekit_url } = res.data;
