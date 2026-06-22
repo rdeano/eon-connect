@@ -34,6 +34,7 @@ class LoginController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        $request->user()->update(['fcm_token' => null]);
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out']);
