@@ -9,7 +9,7 @@ import CallIcon     from '@mui/icons-material/Call';
 import CallEndIcon  from '@mui/icons-material/CallEnd';
 import MicIcon      from '@mui/icons-material/Mic';
 import MicOffIcon   from '@mui/icons-material/MicOff';
-import { Room, RoomEvent } from 'livekit-client';
+import { Room, RoomEvent, ParticipantEvent } from 'livekit-client';
 import api from '../../services/api';
 import useChatStore  from '../../stores/useChatStore';
 import useAuthStore  from '../../stores/useAuthStore';
@@ -41,8 +41,9 @@ export default function ReceptionChat({ unitId, unit }) {
     const [input,       setInput]       = useState('');
     const [sending,     setSending]     = useState(false);
     const [callSeconds, setCallSeconds] = useState(0);
-    const bottomRef  = useRef(null);
-    const timerRef   = useRef(null);
+    const bottomRef      = useRef(null);
+    const timerRef       = useRef(null);
+    const callTimeoutRef = useRef(null);
 
     const { messages, setMessages, addMessage, markUnitMessagesRead } = useChatStore();
     const { user }        = useAuthStore();
@@ -102,9 +103,23 @@ export default function ReceptionChat({ unitId, unit }) {
             const room = new Room({ adaptiveStream: true, dynacast: true });
 
             room.on(RoomEvent.Disconnected, () => {
+                clearTimeout(callTimeoutRef.current);
                 if (useCallStore.getState().room === room) {
                     useCallStore.getState().reset();
                 }
+            });
+
+            // Auto-end if callee doesn't join within 30 seconds
+            callTimeoutRef.current = setTimeout(async () => {
+                const state = useCallStore.getState();
+                if (state.unitId !== unitId) return;
+                state.reset();
+                try { room.disconnect(); } catch {}
+                try { await api.post('/calls/end', { unit_id: unitId }); } catch {}
+            }, 30_000);
+
+            room.on(RoomEvent.ParticipantConnected, () => {
+                clearTimeout(callTimeoutRef.current);
             });
 
             await room.connect(livekit_url, token);
@@ -120,6 +135,7 @@ export default function ReceptionChat({ unitId, unit }) {
     };
 
     const handleEndCall = async () => {
+        clearTimeout(callTimeoutRef.current);
         const { room, unitId: cUnitId } = useCallStore.getState();
         useCallStore.getState().reset();         // clears store first → Disconnected listener is a no-op
         if (room) { try { room.disconnect(); } catch {} }
