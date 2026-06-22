@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
     Dialog, Box, Typography, Avatar,
-    CircularProgress, IconButton, Tooltip,
+    CircularProgress, Button,
 } from '@mui/material';
 import CallIcon    from '@mui/icons-material/Call';
 import CallEndIcon from '@mui/icons-material/CallEnd';
@@ -11,6 +11,7 @@ import api from '../../services/api';
 import { useRingtone } from '../../hooks/useCallTone';
 
 const TIMEOUT = 30;
+const BG      = '#0f172a';
 
 function fmt(s) {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -64,195 +65,222 @@ export default function IncomingCallDialog() {
         reset();
     };
 
-    const remaining  = TIMEOUT - ringSeconds;
-    const progress   = (remaining / TIMEOUT) * 100;
-    const isUrgent   = remaining <= 10;
-    const initial    = (callerName || '?').charAt(0).toUpperCase();
+    const remaining = TIMEOUT - ringSeconds;
+    const progress  = (remaining / TIMEOUT) * 100;
+    const isUrgent  = remaining <= 10;
+    const initial   = (callerName || '?').charAt(0).toUpperCase();
 
     return (
         <Dialog
             open={status === 'ringing'}
             maxWidth={false}
             PaperProps={{
+                elevation: 0,
                 sx: {
-                    width: 340,
-                    borderRadius: '24px',
-                    bgcolor: '#0f172a',
-                    boxShadow: '0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)',
-                    overflow: 'visible',
+                    width: 360,
+                    borderRadius: '20px',
+                    overflow: 'hidden',
+                    background: 'transparent',
                 },
             }}
             BackdropProps={{
-                sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(0,0,0,0.6)' },
+                sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(0,0,0,0.55)' },
             }}
         >
-            {/* Top label bar */}
+            {/* Dark wrapper — applied here, not on Paper, to guarantee bgcolor */}
             <Box sx={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.75,
-                pt: 3, pb: 0, px: 3,
+                bgcolor: BG,
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '20px',
+                overflow: 'hidden',
             }}>
-                <Box sx={{
-                    width: 7, height: 7, borderRadius: '50%',
-                    bgcolor: '#4ade80',
-                    boxShadow: '0 0 8px #4ade80',
-                    animation: 'blink 1.4s ease-in-out infinite',
-                    '@keyframes blink': {
-                        '0%, 100%': { opacity: 1 },
-                        '50%':      { opacity: 0.3 },
-                    },
-                }} />
-                <Typography sx={{
-                    color: 'rgba(255,255,255,0.45)', fontSize: '0.65rem',
-                    fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
-                }}>
-                    Incoming Voice Call
-                </Typography>
-            </Box>
 
-            {/* Avatar + countdown ring */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', pt: 3.5, pb: 2.5 }}>
-                <Box sx={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {/* Background track */}
-                    <CircularProgress
-                        variant="determinate"
-                        value={100}
-                        size={96}
-                        thickness={2.5}
-                        sx={{
-                            position: 'absolute',
-                            color: 'rgba(255,255,255,0.07)',
-                        }}
-                    />
-                    {/* Countdown arc */}
-                    <CircularProgress
-                        variant="determinate"
-                        value={progress}
-                        size={96}
-                        thickness={2.5}
-                        sx={{
-                            position: 'absolute',
-                            color: isUrgent ? '#f87171' : '#4ade80',
-                            transition: 'color 0.6s ease',
-                            transform: 'rotate(-90deg) !important',
-                        }}
-                    />
-                    {/* Pulsing glow */}
+                {/* ── Header label ─────────────────────────────── */}
+                <Box sx={{
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', gap: 1,
+                    pt: 3, pb: 0,
+                }}>
                     <Box sx={{
-                        position: 'absolute',
-                        width: 76, height: 76, borderRadius: '50%',
-                        bgcolor: isUrgent ? 'rgba(248,113,113,0.12)' : 'rgba(74,222,128,0.1)',
-                        animation: 'glow 2s ease-in-out infinite',
-                        transition: 'background-color 0.6s',
-                        '@keyframes glow': {
-                            '0%, 100%': { transform: 'scale(1)',    opacity: 0.6 },
-                            '50%':      { transform: 'scale(1.08)', opacity: 1   },
+                        width: 7, height: 7, borderRadius: '50%',
+                        bgcolor: '#4ade80',
+                        boxShadow: '0 0 8px 2px rgba(74,222,128,0.6)',
+                        animation: 'blink 1.4s ease-in-out infinite',
+                        '@keyframes blink': {
+                            '0%, 100%': { opacity: 1 },
+                            '50%':      { opacity: 0.25 },
                         },
                     }} />
-                    <Avatar sx={{
-                        width: 72, height: 72,
-                        bgcolor: '#1e3a5f',
-                        border: '2px solid rgba(255,255,255,0.12)',
-                        fontSize: 28, fontWeight: 700, color: 'white',
+                    <Typography sx={{
+                        color: 'rgba(255,255,255,0.5)',
+                        fontSize: '0.65rem', fontWeight: 700,
+                        letterSpacing: '0.14em', textTransform: 'uppercase',
+                    }}>
+                        Incoming Voice Call
+                    </Typography>
+                </Box>
+
+                {/* ── Avatar + countdown ring ───────────────────── */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', pt: 3.5, pb: 2 }}>
+                    <Box sx={{
                         position: 'relative',
-                        zIndex: 1,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                     }}>
-                        {initial}
-                    </Avatar>
-                </Box>
-            </Box>
-
-            {/* Caller name */}
-            <Box sx={{ textAlign: 'center', px: 3, pb: 0.5 }}>
-                <Typography sx={{
-                    color: 'white', fontSize: '1.25rem', fontWeight: 700,
-                    lineHeight: 1.2, mb: 0.5,
-                }}>
-                    {callerName ?? 'Unknown'}
-                </Typography>
-                <Typography sx={{
-                    color: 'rgba(255,255,255,0.38)', fontSize: '0.75rem',
-                    fontWeight: 500,
-                }}>
-                    Ringing&nbsp;&nbsp;{fmt(ringSeconds)}
-                </Typography>
-            </Box>
-
-            {/* Auto-decline countdown */}
-            <Box sx={{ textAlign: 'center', pt: 2, pb: 0.5, px: 3 }}>
-                <Typography sx={{
-                    display: 'inline-block',
-                    color: isUrgent ? '#fca5a5' : 'rgba(255,255,255,0.22)',
-                    fontSize: '0.7rem', fontWeight: 600,
-                    letterSpacing: '0.06em',
-                    transition: 'color 0.5s',
-                    bgcolor: isUrgent ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
-                    px: 1.5, py: 0.5, borderRadius: '20px',
-                    transition: 'all 0.5s',
-                }}>
-                    Auto-decline in 0:{String(remaining).padStart(2, '0')}
-                </Typography>
-            </Box>
-
-            {/* Action buttons */}
-            <Box sx={{
-                display: 'flex', justifyContent: 'center', gap: 4,
-                pt: 3, pb: 4,
-            }}>
-                {/* Decline */}
-                <Box sx={{ textAlign: 'center' }}>
-                    <Tooltip title="Decline" placement="top">
-                        <IconButton
-                            onClick={handleDecline}
-                            disabled={connecting}
+                        {/* Track ring */}
+                        <CircularProgress
+                            variant="determinate"
+                            value={100}
+                            size={100}
+                            thickness={2.5}
+                            sx={{ position: 'absolute', color: 'rgba(255,255,255,0.08)' }}
+                        />
+                        {/* Depleting arc */}
+                        <CircularProgress
+                            variant="determinate"
+                            value={progress}
+                            size={100}
+                            thickness={2.5}
                             sx={{
-                                width: 60, height: 60,
-                                bgcolor: '#ef4444',
-                                color: 'white',
-                                '&:hover': { bgcolor: '#dc2626', transform: 'scale(1.06)' },
-                                '&.Mui-disabled': { bgcolor: 'rgba(239,68,68,0.35)', color: 'rgba(255,255,255,0.4)' },
-                                transition: 'all 0.18s ease',
-                                boxShadow: '0 4px 20px rgba(239,68,68,0.4)',
+                                position: 'absolute',
+                                color: isUrgent ? '#f87171' : '#4ade80',
+                                transition: 'color 0.5s ease',
+                                // MUI draws from 3 o'clock; rotate to start at 12
+                                transform: 'rotate(-90deg) !important',
                             }}
-                        >
-                            <CallEndIcon sx={{ fontSize: 26 }} />
-                        </IconButton>
-                    </Tooltip>
+                        />
+                        {/* Subtle pulse glow */}
+                        <Box sx={{
+                            position: 'absolute',
+                            width: 78, height: 78, borderRadius: '50%',
+                            bgcolor: isUrgent
+                                ? 'rgba(248,113,113,0.12)'
+                                : 'rgba(74,222,128,0.10)',
+                            animation: 'glow 2s ease-in-out infinite',
+                            transition: 'background-color 0.5s',
+                            '@keyframes glow': {
+                                '0%, 100%': { transform: 'scale(1)',    opacity: 0.5 },
+                                '50%':      { transform: 'scale(1.07)', opacity: 1   },
+                            },
+                        }} />
+                        <Avatar sx={{
+                            width: 74, height: 74,
+                            bgcolor: '#1e3a5f',
+                            border: '2px solid rgba(255,255,255,0.12)',
+                            fontSize: 30, fontWeight: 700, color: '#fff',
+                            position: 'relative', zIndex: 1,
+                        }}>
+                            {initial}
+                        </Avatar>
+                    </Box>
+                </Box>
+
+                {/* ── Caller name + ringing status ─────────────── */}
+                <Box sx={{ textAlign: 'center', px: 3, pb: 0 }}>
                     <Typography sx={{
-                        color: 'rgba(255,255,255,0.35)', fontSize: '0.68rem',
-                        fontWeight: 600, mt: 0.75, letterSpacing: '0.04em',
+                        color: '#ffffff',
+                        fontSize: '1.35rem',
+                        fontWeight: 700,
+                        lineHeight: 1.25,
+                        mb: 0.5,
                     }}>
+                        {callerName ?? 'Unknown'}
+                    </Typography>
+                    <Typography sx={{
+                        color: 'rgba(255,255,255,0.45)',
+                        fontSize: '0.8rem',
+                        fontWeight: 500,
+                        letterSpacing: '0.02em',
+                    }}>
+                        Ringing&nbsp; · &nbsp;{fmt(ringSeconds)}
+                    </Typography>
+                </Box>
+
+                {/* ── Auto-decline badge ────────────────────────── */}
+                <Box sx={{ textAlign: 'center', pt: 2, pb: 0 }}>
+                    <Box component="span" sx={{
+                        display: 'inline-block',
+                        px: 1.5, py: 0.4,
+                        borderRadius: '20px',
+                        bgcolor: isUrgent
+                            ? 'rgba(239,68,68,0.18)'
+                            : 'rgba(255,255,255,0.07)',
+                        border: `1px solid ${isUrgent ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                        transition: 'all 0.4s',
+                    }}>
+                        <Typography sx={{
+                            color: isUrgent ? '#fca5a5' : 'rgba(255,255,255,0.35)',
+                            fontSize: '0.7rem', fontWeight: 600,
+                            letterSpacing: '0.05em',
+                            transition: 'color 0.4s',
+                        }}>
+                            Auto-decline in 0:{String(remaining).padStart(2, '0')}
+                        </Typography>
+                    </Box>
+                </Box>
+
+                {/* ── Action buttons ────────────────────────────── */}
+                <Box sx={{ display: 'flex', gap: 1.5, px: 3, pt: 3, pb: 3.5 }}>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleDecline}
+                        disabled={connecting}
+                        startIcon={<CallEndIcon />}
+                        sx={{
+                            bgcolor: '#ef4444',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: '0.9rem',
+                            py: 1.25,
+                            borderRadius: '12px',
+                            textTransform: 'none',
+                            boxShadow: '0 4px 16px rgba(239,68,68,0.35)',
+                            '&:hover': {
+                                bgcolor: '#dc2626',
+                                boxShadow: '0 6px 20px rgba(239,68,68,0.5)',
+                            },
+                            '&.Mui-disabled': {
+                                bgcolor: 'rgba(239,68,68,0.4)',
+                                color: 'rgba(255,255,255,0.5)',
+                            },
+                        }}
+                    >
                         Decline
-                    </Typography>
-                </Box>
+                    </Button>
 
-                {/* Answer */}
-                <Box sx={{ textAlign: 'center' }}>
-                    <Tooltip title="Answer" placement="top">
-                        <IconButton
-                            onClick={handleAnswer}
-                            disabled={connecting}
-                            sx={{
-                                width: 60, height: 60,
-                                bgcolor: '#22c55e',
-                                color: 'white',
-                                '&:hover': { bgcolor: '#16a34a', transform: 'scale(1.06)' },
-                                '&.Mui-disabled': { bgcolor: 'rgba(34,197,94,0.35)', color: 'rgba(255,255,255,0.4)' },
-                                transition: 'all 0.18s ease',
-                                boxShadow: '0 4px 20px rgba(34,197,94,0.4)',
-                            }}
-                        >
-                            {connecting
-                                ? <CircularProgress size={22} sx={{ color: 'white' }} />
-                                : <CallIcon sx={{ fontSize: 26 }} />
-                            }
-                        </IconButton>
-                    </Tooltip>
-                    <Typography sx={{
-                        color: 'rgba(255,255,255,0.35)', fontSize: '0.68rem',
-                        fontWeight: 600, mt: 0.75, letterSpacing: '0.04em',
-                    }}>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleAnswer}
+                        disabled={connecting}
+                        startIcon={
+                            connecting
+                                ? <CircularProgress size={16} sx={{ color: 'inherit' }} />
+                                : <CallIcon />
+                        }
+                        sx={{
+                            bgcolor: '#22c55e',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: '0.9rem',
+                            py: 1.25,
+                            borderRadius: '12px',
+                            textTransform: 'none',
+                            boxShadow: '0 4px 16px rgba(34,197,94,0.35)',
+                            '&:hover': {
+                                bgcolor: '#16a34a',
+                                boxShadow: '0 6px 20px rgba(34,197,94,0.5)',
+                            },
+                            '&.Mui-disabled': {
+                                bgcolor: 'rgba(34,197,94,0.4)',
+                                color: 'rgba(255,255,255,0.5)',
+                            },
+                        }}
+                    >
                         {connecting ? 'Connecting…' : 'Answer'}
-                    </Typography>
+                    </Button>
                 </Box>
             </Box>
         </Dialog>
