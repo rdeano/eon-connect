@@ -76,21 +76,21 @@ export default function IncomingCallDialog() {
             maxWidth={false}
             PaperProps={{
                 elevation: 0,
-                // inline style overrides MUI theme background reliably
-                style: {
+                sx: {
                     width: 360,
-                    borderRadius: 20,
+                    borderRadius: '20px',
                     overflow: 'hidden',
-                    background: BG,
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    bgcolor: BG,
                     boxShadow: '0 40px 100px rgba(0,0,0,0.6)',
+                    border: '1px solid rgba(255,255,255,0.08)',
                 },
             }}
             BackdropProps={{
                 sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(0,0,0,0.55)' },
             }}
         >
-            <Box>
+            {/* bgcolor repeated here so inner content never shows white if Paper bg loses specificity */}
+            <Box sx={{ bgcolor: BG }}>
 
                 {/* ── Header label ─────────────────────────────── */}
                 <Box sx={{
