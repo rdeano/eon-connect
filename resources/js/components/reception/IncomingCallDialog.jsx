@@ -76,24 +76,21 @@ export default function IncomingCallDialog() {
             maxWidth={false}
             PaperProps={{
                 elevation: 0,
-                sx: {
+                // inline style overrides MUI theme background reliably
+                style: {
                     width: 360,
-                    borderRadius: '20px',
+                    borderRadius: 20,
                     overflow: 'hidden',
-                    background: 'transparent',
+                    background: BG,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: '0 40px 100px rgba(0,0,0,0.6)',
                 },
             }}
             BackdropProps={{
                 sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(0,0,0,0.55)' },
             }}
         >
-            {/* Dark wrapper — applied here, not on Paper, to guarantee bgcolor */}
-            <Box sx={{
-                bgcolor: BG,
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '20px',
-                overflow: 'hidden',
-            }}>
+            <Box>
 
                 {/* ── Header label ─────────────────────────────── */}
                 <Box sx={{
@@ -228,23 +225,13 @@ export default function IncomingCallDialog() {
                         onClick={handleDecline}
                         disabled={connecting}
                         startIcon={<CallEndIcon />}
+                        style={{ background: '#ef4444', color: '#ffffff', borderRadius: 12 }}
                         sx={{
-                            bgcolor: '#ef4444',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                            fontSize: '0.9rem',
-                            py: 1.25,
-                            borderRadius: '12px',
-                            textTransform: 'none',
-                            boxShadow: '0 4px 16px rgba(239,68,68,0.35)',
-                            '&:hover': {
-                                bgcolor: '#dc2626',
-                                boxShadow: '0 6px 20px rgba(239,68,68,0.5)',
-                            },
-                            '&.Mui-disabled': {
-                                bgcolor: 'rgba(239,68,68,0.4)',
-                                color: 'rgba(255,255,255,0.5)',
-                            },
+                            fontWeight: 700, fontSize: '0.9rem',
+                            py: 1.25, textTransform: 'none',
+                            boxShadow: '0 4px 16px rgba(239,68,68,0.4)',
+                            '&:hover': { background: '#dc2626 !important', boxShadow: '0 6px 20px rgba(239,68,68,0.55)' },
+                            '&.Mui-disabled': { background: 'rgba(239,68,68,0.35) !important', color: 'rgba(255,255,255,0.45) !important' },
                         }}
                     >
                         Decline
@@ -260,23 +247,13 @@ export default function IncomingCallDialog() {
                                 ? <CircularProgress size={16} sx={{ color: 'inherit' }} />
                                 : <CallIcon />
                         }
+                        style={{ background: '#22c55e', color: '#ffffff', borderRadius: 12 }}
                         sx={{
-                            bgcolor: '#22c55e',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                            fontSize: '0.9rem',
-                            py: 1.25,
-                            borderRadius: '12px',
-                            textTransform: 'none',
-                            boxShadow: '0 4px 16px rgba(34,197,94,0.35)',
-                            '&:hover': {
-                                bgcolor: '#16a34a',
-                                boxShadow: '0 6px 20px rgba(34,197,94,0.5)',
-                            },
-                            '&.Mui-disabled': {
-                                bgcolor: 'rgba(34,197,94,0.4)',
-                                color: 'rgba(255,255,255,0.5)',
-                            },
+                            fontWeight: 700, fontSize: '0.9rem',
+                            py: 1.25, textTransform: 'none',
+                            boxShadow: '0 4px 16px rgba(34,197,94,0.4)',
+                            '&:hover': { background: '#16a34a !important', boxShadow: '0 6px 20px rgba(34,197,94,0.55)' },
+                            '&.Mui-disabled': { background: 'rgba(34,197,94,0.35) !important', color: 'rgba(255,255,255,0.45) !important' },
                         }}
                     >
                         {connecting ? 'Connecting…' : 'Answer'}
