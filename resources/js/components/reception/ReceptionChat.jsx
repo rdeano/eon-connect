@@ -38,11 +38,14 @@ function formatDuration(secs) {
 }
 
 export default function ReceptionChat({ unitId, unit }) {
-    const [input,       setInput]       = useState('');
-    const [sending,     setSending]     = useState(false);
-    const [callSeconds, setCallSeconds] = useState(0);
+    const [input,          setInput]          = useState('');
+    const [sending,        setSending]        = useState(false);
+    const [waitSeconds,    setWaitSeconds]    = useState(0);
+    const [callSeconds,    setCallSeconds]    = useState(0);
+    const [remoteJoined,   setRemoteJoined]   = useState(false);
     const bottomRef      = useRef(null);
     const timerRef       = useRef(null);
+    const waitTimerRef   = useRef(null);
     const callTimeoutRef = useRef(null);
 
     const { messages, setMessages, addMessage, markUnitMessagesRead } = useChatStore();
@@ -77,17 +80,38 @@ export default function ReceptionChat({ unitId, unit }) {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [unitMessages]);
 
-    // Call duration timer
+    // Reset remoteJoined when the call ends
     useEffect(() => {
-        if (isThisUnitOnCall && callStore.status === 'active') {
+        if (!isThisUnitOnCall) {
+            setRemoteJoined(false);
+            setWaitSeconds(0);
+            setCallSeconds(0);
+            clearInterval(waitTimerRef.current);
+            clearInterval(timerRef.current);
+        }
+    }, [isThisUnitOnCall]);
+
+    // Ringing timer — counts up while waiting for callee to answer
+    useEffect(() => {
+        if (isThisUnitOnCall && callStore.status === 'active' && !remoteJoined) {
+            setWaitSeconds(0);
+            waitTimerRef.current = setInterval(() => setWaitSeconds((s) => s + 1), 1000);
+        } else {
+            clearInterval(waitTimerRef.current);
+        }
+        return () => clearInterval(waitTimerRef.current);
+    }, [isThisUnitOnCall, callStore.status, remoteJoined]);
+
+    // Call duration timer — only starts once callee joins
+    useEffect(() => {
+        if (isThisUnitOnCall && remoteJoined) {
             setCallSeconds(0);
             timerRef.current = setInterval(() => setCallSeconds((s) => s + 1), 1000);
         } else {
             clearInterval(timerRef.current);
-            setCallSeconds(0);
         }
         return () => clearInterval(timerRef.current);
-    }, [isThisUnitOnCall, callStore.status]);
+    }, [isThisUnitOnCall, remoteJoined]);
 
     const handleCall = async () => {
         if (callStore.status !== 'idle') return;
@@ -120,6 +144,7 @@ export default function ReceptionChat({ unitId, unit }) {
 
             room.on(RoomEvent.ParticipantConnected, () => {
                 clearTimeout(callTimeoutRef.current);
+                setRemoteJoined(true);
             });
 
             await room.connect(livekit_url, token);
@@ -218,16 +243,57 @@ export default function ReceptionChat({ unitId, unit }) {
 
                 {/* ── Call controls ─────────────────────────────────────── */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                    {isThisUnitOnCall && callStore.status === 'active' && (
+
+                    {/* Phase 1: initiating (very brief — connecting to LiveKit) */}
+                    {isThisUnitOnCall && callStore.status === 'calling' && (
+                        <Chip
+                            icon={<CircularProgress size={12} color="inherit" />}
+                            label="Connecting…"
+                            size="small"
+                            sx={{ bgcolor: 'primary.50', color: 'primary.dark', fontWeight: 600, height: 28 }}
+                        />
+                    )}
+
+                    {/* Phase 2a: ringing — waiting for callee to answer */}
+                    {isThisUnitOnCall && callStore.status === 'active' && !remoteJoined && (
                         <>
-                            {/* Duration chip */}
                             <Chip
-                                label={formatDuration(callSeconds)}
+                                icon={<CircularProgress size={12} color="inherit" />}
+                                label={`Ringing… ${formatDuration(waitSeconds)}`}
+                                size="small"
+                                sx={{
+                                    bgcolor: 'warning.50', color: 'warning.dark',
+                                    fontWeight: 700, fontSize: '0.75rem', height: 28,
+                                    '& .MuiChip-icon': { color: 'warning.main' },
+                                }}
+                            />
+                            <Tooltip title="Cancel call">
+                                <IconButton
+                                    size="small"
+                                    onClick={handleEndCall}
+                                    sx={{
+                                        bgcolor: 'error.main', color: 'white',
+                                        '&:hover': { bgcolor: 'error.dark' },
+                                        width: 34, height: 34,
+                                    }}
+                                >
+                                    <CallEndIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        </>
+                    )}
+
+                    {/* Phase 2b: active call — callee answered */}
+                    {isThisUnitOnCall && callStore.status === 'active' && remoteJoined && (
+                        <>
+                            {/* Connected + duration */}
+                            <Chip
+                                label={`● ${formatDuration(callSeconds)}`}
                                 size="small"
                                 sx={{
                                     bgcolor: 'success.50', color: 'success.dark',
-                                    fontWeight: 700, fontSize: '0.75rem',
-                                    height: 26,
+                                    fontWeight: 700, fontSize: '0.75rem', height: 28,
+                                    letterSpacing: 0.5,
                                 }}
                             />
 
@@ -264,16 +330,7 @@ export default function ReceptionChat({ unitId, unit }) {
                         </>
                     )}
 
-                    {isThisUnitOnCall && callStore.status === 'calling' && (
-                        <Chip
-                            icon={<CircularProgress size={12} color="inherit" />}
-                            label="Calling…"
-                            size="small"
-                            sx={{ bgcolor: 'primary.50', color: 'primary.dark', fontWeight: 600, height: 26 }}
-                        />
-                    )}
-
-                    {/* Call button — only shown when no call is active for any unit */}
+                    {/* Call button — only shown when no call is active */}
                     {callStore.status === 'idle' && (
                         <Tooltip title="Start voice call">
                             <IconButton
