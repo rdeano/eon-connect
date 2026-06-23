@@ -1,21 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import {
     Box, TextField, Typography, Stack, Avatar,
-    IconButton, Tooltip, CircularProgress, Chip,
+    IconButton, Tooltip, CircularProgress,
 } from '@mui/material';
-import SendIcon     from '@mui/icons-material/Send';
-import DoneAllIcon  from '@mui/icons-material/DoneAll';
-import CallIcon     from '@mui/icons-material/Call';
-import CallEndIcon  from '@mui/icons-material/CallEnd';
-import MicIcon      from '@mui/icons-material/Mic';
-import MicOffIcon   from '@mui/icons-material/MicOff';
-import { Room, RoomEvent, ParticipantEvent } from 'livekit-client';
+import SendIcon    from '@mui/icons-material/Send';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
+import CallIcon    from '@mui/icons-material/Call';
+import { Room, RoomEvent } from 'livekit-client';
 import api from '../../services/api';
-import useChatStore  from '../../stores/useChatStore';
-import useAuthStore  from '../../stores/useAuthStore';
+import useChatStore     from '../../stores/useChatStore';
+import useAuthStore     from '../../stores/useAuthStore';
 import usePresenceStore from '../../stores/usePresenceStore';
-import useCallStore  from '../../stores/useCallStore';
-import { useRingbackTone } from '../../hooks/useCallTone';
+import useCallStore     from '../../stores/useCallStore';
 
 function formatTime(ts) {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -31,39 +27,21 @@ function formatDate(ts) {
     return d.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-function formatDuration(secs) {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
-}
 
 export default function ReceptionChat({ unitId, unit }) {
-    const [input,          setInput]          = useState('');
-    const [sending,        setSending]        = useState(false);
-    const [waitSeconds,    setWaitSeconds]    = useState(0);
-    const [callSeconds,    setCallSeconds]    = useState(0);
-    const [remoteJoined,   setRemoteJoined]   = useState(false);
-    const bottomRef      = useRef(null);
-    const timerRef       = useRef(null);
-    const waitTimerRef   = useRef(null);
-    const callTimeoutRef = useRef(null);
+    const [input,   setInput]   = useState('');
+    const [sending, setSending] = useState(false);
+    const bottomRef = useRef(null);
 
     const { messages, setMessages, addMessage, markUnitMessagesRead } = useChatStore();
     const { user }        = useAuthStore();
     const { onlineUsers } = usePresenceStore();
     const callStore       = useCallStore();
 
-    const unitMessages    = messages[unitId] || [];
-    const isOwnerOnline   = unit?.owner
+    const unitMessages  = messages[unitId] || [];
+    const isOwnerOnline = unit?.owner
         ? Object.values(onlineUsers).some((u) => u.id === unit.owner.id)
         : false;
-
-    // Is the current active call with THIS unit?
-    const isThisUnitOnCall = callStore.unitId === unitId &&
-        (callStore.status === 'calling' || callStore.status === 'active');
-
-    // Play ringback tone while the call is dialling (stops automatically when active)
-    useRingbackTone(isThisUnitOnCall && callStore.status === 'calling');
 
     // Load messages when unit changes
     useEffect(() => {
@@ -80,42 +58,10 @@ export default function ReceptionChat({ unitId, unit }) {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [unitMessages]);
 
-    // Reset remoteJoined when the call ends
-    useEffect(() => {
-        if (!isThisUnitOnCall) {
-            setRemoteJoined(false);
-            setWaitSeconds(0);
-            setCallSeconds(0);
-            clearInterval(waitTimerRef.current);
-            clearInterval(timerRef.current);
-        }
-    }, [isThisUnitOnCall]);
-
-    // Ringing timer — counts up while waiting for callee to answer
-    useEffect(() => {
-        if (isThisUnitOnCall && callStore.status === 'active' && !remoteJoined) {
-            setWaitSeconds(0);
-            waitTimerRef.current = setInterval(() => setWaitSeconds((s) => s + 1), 1000);
-        } else {
-            clearInterval(waitTimerRef.current);
-        }
-        return () => clearInterval(waitTimerRef.current);
-    }, [isThisUnitOnCall, callStore.status, remoteJoined]);
-
-    // Call duration timer — only starts once callee joins
-    useEffect(() => {
-        if (isThisUnitOnCall && remoteJoined) {
-            setCallSeconds(0);
-            timerRef.current = setInterval(() => setCallSeconds((s) => s + 1), 1000);
-        } else {
-            clearInterval(timerRef.current);
-        }
-        return () => clearInterval(timerRef.current);
-    }, [isThisUnitOnCall, remoteJoined]);
-
     const handleCall = async () => {
         if (callStore.status !== 'idle') return;
-        callStore.setCalling(unitId);
+        const calleeName = unit?.owner_name || `Unit ${unit?.unit_number}` || 'Unknown';
+        callStore.setCalling(unitId, calleeName);
         try {
             const res = await api.post('/calls/token', { unit_id: unitId });
             const { token, livekit_url } = res.data;
@@ -127,24 +73,13 @@ export default function ReceptionChat({ unitId, unit }) {
             const room = new Room({ adaptiveStream: true, dynacast: true });
 
             room.on(RoomEvent.Disconnected, () => {
-                clearTimeout(callTimeoutRef.current);
                 if (useCallStore.getState().room === room) {
                     useCallStore.getState().reset();
                 }
             });
 
-            // Auto-end if callee doesn't join within 30 seconds
-            callTimeoutRef.current = setTimeout(async () => {
-                const state = useCallStore.getState();
-                if (state.unitId !== unitId) return;
-                state.reset();
-                try { room.disconnect(); } catch {}
-                try { await api.post('/calls/end', { unit_id: unitId }); } catch {}
-            }, 30_000);
-
             room.on(RoomEvent.ParticipantConnected, () => {
-                clearTimeout(callTimeoutRef.current);
-                setRemoteJoined(true);
+                useCallStore.getState().setRemoteJoined();
             });
 
             await room.connect(livekit_url, token);
@@ -157,22 +92,6 @@ export default function ReceptionChat({ unitId, unit }) {
             console.error('[Call] start failed:', e);
             useCallStore.getState().reset();
         }
-    };
-
-    const handleEndCall = async () => {
-        clearTimeout(callTimeoutRef.current);
-        const { room, unitId: cUnitId } = useCallStore.getState();
-        useCallStore.getState().reset();         // clears store first → Disconnected listener is a no-op
-        if (room) { try { room.disconnect(); } catch {} }
-        try { await api.post('/calls/end', { unit_id: cUnitId }); } catch {}
-    };
-
-    const handleToggleMute = async () => {
-        const { room, isMuted } = useCallStore.getState();
-        if (!room) return;
-        const next = !isMuted;
-        await room.localParticipant.setMicrophoneEnabled(!next);
-        callStore.setMuted(next);
     };
 
     const sendMessage = async () => {
@@ -241,111 +160,25 @@ export default function ReceptionChat({ unitId, unit }) {
                     </Box>
                 </Box>
 
-                {/* ── Call controls ─────────────────────────────────────── */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-
-                    {/* Phase 1: initiating (very brief — connecting to LiveKit) */}
-                    {isThisUnitOnCall && callStore.status === 'calling' && (
-                        <Chip
-                            icon={<CircularProgress size={12} color="inherit" />}
-                            label="Connecting…"
-                            size="small"
-                            sx={{ bgcolor: 'primary.50', color: 'primary.dark', fontWeight: 600, height: 28 }}
-                        />
-                    )}
-
-                    {/* Phase 2a: ringing — waiting for callee to answer */}
-                    {isThisUnitOnCall && callStore.status === 'active' && !remoteJoined && (
-                        <>
-                            <Chip
-                                icon={<CircularProgress size={12} color="inherit" />}
-                                label={`Ringing… ${formatDuration(waitSeconds)}`}
-                                size="small"
-                                sx={{
-                                    bgcolor: 'warning.50', color: 'warning.dark',
-                                    fontWeight: 700, fontSize: '0.75rem', height: 28,
-                                    '& .MuiChip-icon': { color: 'warning.main' },
-                                }}
-                            />
-                            <Tooltip title="Cancel call">
-                                <IconButton
-                                    size="small"
-                                    onClick={handleEndCall}
-                                    sx={{
-                                        bgcolor: 'error.main', color: 'white',
-                                        '&:hover': { bgcolor: 'error.dark' },
-                                        width: 34, height: 34,
-                                    }}
-                                >
-                                    <CallEndIcon fontSize="small" />
-                                </IconButton>
-                            </Tooltip>
-                        </>
-                    )}
-
-                    {/* Phase 2b: active call — callee answered */}
-                    {isThisUnitOnCall && callStore.status === 'active' && remoteJoined && (
-                        <>
-                            {/* Connected + duration */}
-                            <Chip
-                                label={`● ${formatDuration(callSeconds)}`}
-                                size="small"
-                                sx={{
-                                    bgcolor: 'success.50', color: 'success.dark',
-                                    fontWeight: 700, fontSize: '0.75rem', height: 28,
-                                    letterSpacing: 0.5,
-                                }}
-                            />
-
-                            {/* Mute toggle */}
-                            <Tooltip title={callStore.isMuted ? 'Unmute' : 'Mute'}>
-                                <IconButton
-                                    size="small"
-                                    onClick={handleToggleMute}
-                                    sx={{
-                                        bgcolor: callStore.isMuted ? 'warning.100' : 'grey.100',
-                                        color:   callStore.isMuted ? 'warning.dark' : 'text.secondary',
-                                        '&:hover': { bgcolor: callStore.isMuted ? 'warning.200' : 'grey.200' },
-                                        width: 34, height: 34,
-                                    }}
-                                >
-                                    {callStore.isMuted ? <MicOffIcon fontSize="small" /> : <MicIcon fontSize="small" />}
-                                </IconButton>
-                            </Tooltip>
-
-                            {/* End call */}
-                            <Tooltip title="End call">
-                                <IconButton
-                                    size="small"
-                                    onClick={handleEndCall}
-                                    sx={{
-                                        bgcolor: 'error.main', color: 'white',
-                                        '&:hover': { bgcolor: 'error.dark' },
-                                        width: 34, height: 34,
-                                    }}
-                                >
-                                    <CallEndIcon fontSize="small" />
-                                </IconButton>
-                            </Tooltip>
-                        </>
-                    )}
-
-                    {/* Call button — only shown when no call is active */}
-                    {callStore.status === 'idle' && (
-                        <Tooltip title="Start voice call">
+                {/* ── Call button ───────────────────────────────────────── */}
+                <Box sx={{ flexShrink: 0 }}>
+                    <Tooltip title={callStore.status === 'idle' ? 'Start voice call' : 'Call in progress'}>
+                        <span>
                             <IconButton
                                 size="small"
                                 onClick={handleCall}
+                                disabled={callStore.status !== 'idle'}
                                 sx={{
-                                    bgcolor: 'success.main', color: 'white',
-                                    '&:hover': { bgcolor: 'success.dark' },
+                                    bgcolor: callStore.status === 'idle' ? 'success.main' : 'grey.300',
+                                    color: callStore.status === 'idle' ? 'white' : 'text.disabled',
+                                    '&:hover:not(.Mui-disabled)': { bgcolor: 'success.dark' },
                                     width: 34, height: 34,
                                 }}
                             >
                                 <CallIcon fontSize="small" />
                             </IconButton>
-                        </Tooltip>
-                    )}
+                        </span>
+                    </Tooltip>
                 </Box>
             </Box>
 

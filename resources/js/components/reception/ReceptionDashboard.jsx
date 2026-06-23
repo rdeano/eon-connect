@@ -3,7 +3,8 @@ import { Box, Typography } from '@mui/material';
 import ForumIcon from '@mui/icons-material/Forum';
 import UnitList          from './UnitList';
 import ReceptionChat     from './ReceptionChat';
-import IncomingCallDialog from './IncomingCallDialog';
+import IncomingCallDialog  from './IncomingCallDialog';
+import OutgoingCallDialog  from './OutgoingCallDialog';
 import TopBar            from '../common/TopBar';
 import api               from '../../services/api';
 import useChatStore      from '../../stores/useChatStore';
@@ -131,8 +132,9 @@ export default function ReceptionDashboard() {
                 </Box>
             </Box>
 
-            {/* Global incoming call dialog — appears over any screen state */}
+            {/* Global call dialogs — appear over any screen state */}
             <IncomingCallDialog />
+            <OutgoingCallDialog />
         </Box>
     );
 }
