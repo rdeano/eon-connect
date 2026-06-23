@@ -1,4 +1,4 @@
-import { AppBar, Toolbar, Typography, Box, Avatar, IconButton, Tooltip, Chip, Button } from '@mui/material';
+import { AppBar, Toolbar, Typography, Box, Avatar, IconButton, Tooltip, Button } from '@mui/material';
 import ApartmentIcon  from '@mui/icons-material/Apartment';
 import LogoutIcon     from '@mui/icons-material/Logout';
 import ForumIcon      from '@mui/icons-material/Forum';
@@ -6,11 +6,6 @@ import PeopleAltIcon  from '@mui/icons-material/PeopleAlt';
 import useAuthStore from '../../stores/useAuthStore';
 import api from '../../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-const ROLE_LABELS = {
-    reception: 'Reception',
-    unit_owner: 'Unit Owner',
-};
 
 const NAV = [
     { label: 'Messages',    icon: ForumIcon,     path: '/reception' },
@@ -83,22 +78,7 @@ export default function TopBar() {
 
                 <Box sx={{ flexGrow: 1 }} />
 
-                {/* Role chip */}
-                {user?.role && (
-                    <Chip
-                        label={ROLE_LABELS[user.role] || user.role}
-                        size="small"
-                        sx={{
-                            bgcolor: 'rgba(255,255,255,0.14)',
-                            color: 'rgba(255,255,255,0.88)',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            height: 22,
-                            '& .MuiChip-label': { px: 1, fontSize: '0.68rem' },
-                        }}
-                    />
-                )}
-
-                {/* User info */}
+{/* User info */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Avatar sx={{
                         width: 32, height: 32,
