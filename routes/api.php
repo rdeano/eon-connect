@@ -6,6 +6,7 @@ use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PushController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\UnitOwnerController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,9 @@ Route::prefix('v1')->group(function () {
 
         // Units — reception only
         Route::apiResource('units', UnitController::class);
+        Route::post('/units/{unit}/owner',   [UnitOwnerController::class, 'store']);
+        Route::put('/units/{unit}/owner',    [UnitOwnerController::class, 'update']);
+        Route::delete('/units/{unit}/owner', [UnitOwnerController::class, 'destroy']);
 
         // Conversations
         Route::get('/conversations',           [ConversationController::class, 'index']);

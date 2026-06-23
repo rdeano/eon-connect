@@ -20,7 +20,12 @@ class UnitController extends Controller
     {
         if ($deny = $this->requireReception($request)) return $deny;
 
-        return response()->json(['data' => Unit::with('owner')->active()->get()]);
+        $query = Unit::with('owner');
+        if (!$request->boolean('all')) {
+            $query->active();
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
     public function store(Request $request): JsonResponse

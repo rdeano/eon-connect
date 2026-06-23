@@ -1,18 +1,26 @@
-import { AppBar, Toolbar, Typography, Box, Avatar, IconButton, Tooltip, Chip } from '@mui/material';
-import ApartmentIcon from '@mui/icons-material/Apartment';
-import LogoutIcon from '@mui/icons-material/Logout';
+import { AppBar, Toolbar, Typography, Box, Avatar, IconButton, Tooltip, Chip, Button } from '@mui/material';
+import ApartmentIcon  from '@mui/icons-material/Apartment';
+import LogoutIcon     from '@mui/icons-material/Logout';
+import ForumIcon      from '@mui/icons-material/Forum';
+import PeopleAltIcon  from '@mui/icons-material/PeopleAlt';
 import useAuthStore from '../../stores/useAuthStore';
 import api from '../../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const ROLE_LABELS = {
     reception: 'Reception',
     unit_owner: 'Unit Owner',
 };
 
+const NAV = [
+    { label: 'Messages',    icon: ForumIcon,     path: '/reception' },
+    { label: 'Unit Owners', icon: PeopleAltIcon, path: '/reception/units' },
+];
+
 export default function TopBar() {
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
+    const { pathname } = useLocation();
 
     const handleLogout = async () => {
         try { await api.post('/auth/logout'); } catch {}
@@ -37,9 +45,43 @@ export default function TopBar() {
                 }}>
                     <ApartmentIcon sx={{ color: 'white', fontSize: 19 }} />
                 </Box>
-                <Typography variant="subtitle1" fontWeight={700} color="white" sx={{ flexGrow: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} color="white">
                     Eon Connect
                 </Typography>
+
+                {/* Reception navigation */}
+                {user?.role === 'reception' && (
+                    <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
+                        {NAV.map(({ label, icon: Icon, path }) => {
+                            const active = pathname === path;
+                            return (
+                                <Button
+                                    key={path}
+                                    onClick={() => navigate(path)}
+                                    startIcon={<Icon sx={{ fontSize: '1rem !important' }} />}
+                                    size="small"
+                                    sx={{
+                                        color: active ? 'white' : 'rgba(255,255,255,0.65)',
+                                        bgcolor: active ? 'rgba(255,255,255,0.18)' : 'transparent',
+                                        borderRadius: '8px',
+                                        textTransform: 'none',
+                                        fontWeight: active ? 700 : 500,
+                                        fontSize: '0.8rem',
+                                        px: 1.5, py: 0.6,
+                                        '&:hover': {
+                                            bgcolor: 'rgba(255,255,255,0.12)',
+                                            color: 'white',
+                                        },
+                                    }}
+                                >
+                                    {label}
+                                </Button>
+                            );
+                        })}
+                    </Box>
+                )}
+
+                <Box sx={{ flexGrow: 1 }} />
 
                 {/* Role chip */}
                 {user?.role && (
