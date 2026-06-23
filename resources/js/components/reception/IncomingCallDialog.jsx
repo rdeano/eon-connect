@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
     Dialog, Box, Typography, Avatar,
-    CircularProgress, Button,
+    CircularProgress, Button, IconButton, Tooltip,
 } from '@mui/material';
 import CallIcon    from '@mui/icons-material/Call';
 import CallEndIcon from '@mui/icons-material/CallEnd';
+import MicIcon     from '@mui/icons-material/Mic';
+import MicOffIcon  from '@mui/icons-material/MicOff';
 import { Room, RoomEvent } from 'livekit-client';
 import useCallStore from '../../stores/useCallStore';
 import api from '../../services/api';
@@ -18,27 +20,39 @@ function fmt(s) {
 }
 
 export default function IncomingCallDialog() {
-    const [connecting,  setConnecting]  = useState(false);
-    const [ringSeconds, setRingSeconds] = useState(0);
-    const { status, unitId, callerName, token, livekitUrl, setRoom, setActive, reset } = useCallStore();
+    const [connecting,   setConnecting]   = useState(false);
+    const [ringSeconds,  setRingSeconds]  = useState(0);
+    const [callSeconds,  setCallSeconds]  = useState(0);
+    const { status, direction, unitId, callerName, token, livekitUrl, isMuted, setRoom, setActive, setMuted, reset } = useCallStore();
 
-    useRingtone(status === 'ringing');
+    const isInbound = direction === 'inbound';
+    const isRinging = status === 'ringing';
+    const isActive  = status === 'active' && isInbound;
+
+    useRingtone(isRinging);
 
     useEffect(() => {
-        if (status !== 'ringing') { setRingSeconds(0); return; }
+        if (!isRinging) { setRingSeconds(0); return; }
         setRingSeconds(0);
         const t = setInterval(() => setRingSeconds((s) => s + 1), 1000);
         return () => clearInterval(t);
-    }, [status]);
+    }, [isRinging]);
 
     useEffect(() => {
-        if (status !== 'ringing') return;
+        if (!isActive) { setCallSeconds(0); return; }
+        setCallSeconds(0);
+        const t = setInterval(() => setCallSeconds((s) => s + 1), 1000);
+        return () => clearInterval(t);
+    }, [isActive]);
+
+    useEffect(() => {
+        if (!isRinging) return;
         const t = setTimeout(async () => {
             try { await api.post('/calls/end', { unit_id: unitId }); } catch {}
             reset();
         }, TIMEOUT * 1000);
         return () => clearTimeout(t);
-    }, [status]);
+    }, [isRinging]);
 
     const handleAnswer = async () => {
         setConnecting(true);
@@ -65,6 +79,22 @@ export default function IncomingCallDialog() {
         reset();
     };
 
+    const handleEndCall = async () => {
+        const state = useCallStore.getState();
+        const { room, unitId: cUnitId } = state;
+        state.reset();
+        if (room) { try { room.disconnect(); } catch {} }
+        try { await api.post('/calls/end', { unit_id: cUnitId }); } catch {}
+    };
+
+    const handleToggleMute = async () => {
+        const state = useCallStore.getState();
+        if (!state.room) return;
+        const next = !state.isMuted;
+        await state.room.localParticipant.setMicrophoneEnabled(!next);
+        setMuted(next);
+    };
+
     const remaining = TIMEOUT - ringSeconds;
     const progress  = (remaining / TIMEOUT) * 100;
     const isUrgent  = remaining <= 10;
@@ -72,7 +102,7 @@ export default function IncomingCallDialog() {
 
     return (
         <Dialog
-            open={status === 'ringing'}
+            open={isRinging || isActive}
             maxWidth={false}
             PaperProps={{
                 elevation: 0,
@@ -113,7 +143,7 @@ export default function IncomingCallDialog() {
                         fontSize: '0.65rem', fontWeight: 700,
                         letterSpacing: '0.14em', textTransform: 'uppercase',
                     }}>
-                        Incoming Voice Call
+                        {isActive ? 'Call Connected' : 'Incoming Voice Call'}
                     </Typography>
                 </Box>
 
@@ -133,27 +163,38 @@ export default function IncomingCallDialog() {
                             thickness={2.5}
                             sx={{ position: 'absolute', color: 'rgba(255,255,255,0.08)' }}
                         />
-                        {/* Depleting arc */}
-                        <CircularProgress
-                            variant="determinate"
-                            value={progress}
-                            size={100}
-                            thickness={2.5}
-                            sx={{
-                                position: 'absolute',
-                                color: isUrgent ? '#f87171' : '#4ade80',
-                                transition: 'color 0.5s ease',
-                                // MUI draws from 3 o'clock; rotate to start at 12
-                                transform: 'rotate(-90deg) !important',
-                            }}
-                        />
+                        {/* Depleting arc (ringing) / solid arc (active) */}
+                        {isActive ? (
+                            <CircularProgress
+                                variant="determinate"
+                                value={100}
+                                size={100}
+                                thickness={2.5}
+                                sx={{ position: 'absolute', color: '#4ade80' }}
+                            />
+                        ) : (
+                            <CircularProgress
+                                variant="determinate"
+                                value={progress}
+                                size={100}
+                                thickness={2.5}
+                                sx={{
+                                    position: 'absolute',
+                                    color: isUrgent ? '#f87171' : '#4ade80',
+                                    transition: 'color 0.5s ease',
+                                    transform: 'rotate(-90deg) !important',
+                                }}
+                            />
+                        )}
                         {/* Subtle pulse glow */}
                         <Box sx={{
                             position: 'absolute',
                             width: 78, height: 78, borderRadius: '50%',
-                            bgcolor: isUrgent
-                                ? 'rgba(248,113,113,0.12)'
-                                : 'rgba(74,222,128,0.10)',
+                            bgcolor: isActive
+                                ? 'rgba(74,222,128,0.10)'
+                                : isUrgent
+                                    ? 'rgba(248,113,113,0.12)'
+                                    : 'rgba(74,222,128,0.10)',
                             animation: 'glow 2s ease-in-out infinite',
                             transition: 'background-color 0.5s',
                             '@keyframes glow': {
@@ -190,75 +231,113 @@ export default function IncomingCallDialog() {
                         fontWeight: 500,
                         letterSpacing: '0.02em',
                     }}>
-                        Ringing&nbsp; · &nbsp;{fmt(ringSeconds)}
+                        {isActive ? `●  ${fmt(callSeconds)}` : `Ringing  ·  ${fmt(ringSeconds)}`}
                     </Typography>
                 </Box>
 
-                {/* ── Auto-decline badge ────────────────────────── */}
-                <Box sx={{ textAlign: 'center', pt: 2, pb: 0 }}>
-                    <Box component="span" sx={{
-                        display: 'inline-block',
-                        px: 1.5, py: 0.4,
-                        borderRadius: '20px',
-                        bgcolor: isUrgent
-                            ? 'rgba(239,68,68,0.18)'
-                            : 'rgba(255,255,255,0.07)',
-                        border: `1px solid ${isUrgent ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.1)'}`,
-                        transition: 'all 0.4s',
-                    }}>
-                        <Typography sx={{
-                            color: isUrgent ? '#fca5a5' : 'rgba(255,255,255,0.35)',
-                            fontSize: '0.7rem', fontWeight: 600,
-                            letterSpacing: '0.05em',
-                            transition: 'color 0.4s',
+                {/* ── Auto-decline badge (ringing only) ────────── */}
+                {isRinging && (
+                    <Box sx={{ textAlign: 'center', pt: 2, pb: 0 }}>
+                        <Box component="span" sx={{
+                            display: 'inline-block',
+                            px: 1.5, py: 0.4,
+                            borderRadius: '20px',
+                            bgcolor: isUrgent
+                                ? 'rgba(239,68,68,0.18)'
+                                : 'rgba(255,255,255,0.07)',
+                            border: `1px solid ${isUrgent ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                            transition: 'all 0.4s',
                         }}>
-                            Auto-decline in 0:{String(remaining).padStart(2, '0')}
-                        </Typography>
+                            <Typography sx={{
+                                color: isUrgent ? '#fca5a5' : 'rgba(255,255,255,0.35)',
+                                fontSize: '0.7rem', fontWeight: 600,
+                                letterSpacing: '0.05em',
+                                transition: 'color 0.4s',
+                            }}>
+                                Auto-decline in 0:{String(remaining).padStart(2, '0')}
+                            </Typography>
+                        </Box>
                     </Box>
-                </Box>
+                )}
 
                 {/* ── Action buttons ────────────────────────────── */}
-                <Box sx={{ display: 'flex', gap: 1.5, px: 3, pt: 3, pb: 3.5 }}>
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        onClick={handleDecline}
-                        disabled={connecting}
-                        startIcon={<CallEndIcon />}
-                        style={{ background: '#ef4444', color: '#ffffff', borderRadius: 12 }}
-                        sx={{
-                            fontWeight: 700, fontSize: '0.9rem',
-                            py: 1.25, textTransform: 'none',
-                            boxShadow: '0 4px 16px rgba(239,68,68,0.4)',
-                            '&:hover': { background: '#dc2626 !important', boxShadow: '0 6px 20px rgba(239,68,68,0.55)' },
-                            '&.Mui-disabled': { background: 'rgba(239,68,68,0.35) !important', color: 'rgba(255,255,255,0.45) !important' },
-                        }}
-                    >
-                        Decline
-                    </Button>
+                {isActive ? (
+                    <Box sx={{ display: 'flex', gap: 1.5, px: 3, pt: 3, pb: 3.5, justifyContent: 'center' }}>
+                        <Tooltip title={isMuted ? 'Unmute' : 'Mute'}>
+                            <IconButton
+                                onClick={handleToggleMute}
+                                sx={{
+                                    bgcolor: isMuted ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.08)',
+                                    color:   isMuted ? '#fbbf24' : 'rgba(255,255,255,0.7)',
+                                    border:  `1px solid ${isMuted ? 'rgba(251,191,36,0.35)' : 'rgba(255,255,255,0.12)'}`,
+                                    width: 52, height: 52,
+                                    '&:hover': {
+                                        bgcolor: isMuted ? 'rgba(251,191,36,0.28)' : 'rgba(255,255,255,0.14)',
+                                    },
+                                }}
+                            >
+                                {isMuted ? <MicOffIcon /> : <MicIcon />}
+                            </IconButton>
+                        </Tooltip>
 
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        onClick={handleAnswer}
-                        disabled={connecting}
-                        startIcon={
-                            connecting
-                                ? <CircularProgress size={16} sx={{ color: 'inherit' }} />
-                                : <CallIcon />
-                        }
-                        style={{ background: '#22c55e', color: '#ffffff', borderRadius: 12 }}
-                        sx={{
-                            fontWeight: 700, fontSize: '0.9rem',
-                            py: 1.25, textTransform: 'none',
-                            boxShadow: '0 4px 16px rgba(34,197,94,0.4)',
-                            '&:hover': { background: '#16a34a !important', boxShadow: '0 6px 20px rgba(34,197,94,0.55)' },
-                            '&.Mui-disabled': { background: 'rgba(34,197,94,0.35) !important', color: 'rgba(255,255,255,0.45) !important' },
-                        }}
-                    >
-                        {connecting ? 'Connecting…' : 'Answer'}
-                    </Button>
-                </Box>
+                        <Button
+                            variant="contained"
+                            onClick={handleEndCall}
+                            startIcon={<CallEndIcon />}
+                            style={{ background: '#ef4444', color: '#ffffff', borderRadius: 12 }}
+                            sx={{
+                                fontWeight: 700, fontSize: '0.9rem',
+                                py: 1.25, px: 4, textTransform: 'none',
+                                boxShadow: '0 4px 16px rgba(239,68,68,0.4)',
+                                '&:hover': { background: '#dc2626 !important', boxShadow: '0 6px 20px rgba(239,68,68,0.55)' },
+                            }}
+                        >
+                            End Call
+                        </Button>
+                    </Box>
+                ) : (
+                    <Box sx={{ display: 'flex', gap: 1.5, px: 3, pt: 3, pb: 3.5 }}>
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={handleDecline}
+                            disabled={connecting}
+                            startIcon={<CallEndIcon />}
+                            style={{ background: '#ef4444', color: '#ffffff', borderRadius: 12 }}
+                            sx={{
+                                fontWeight: 700, fontSize: '0.9rem',
+                                py: 1.25, textTransform: 'none',
+                                boxShadow: '0 4px 16px rgba(239,68,68,0.4)',
+                                '&:hover': { background: '#dc2626 !important', boxShadow: '0 6px 20px rgba(239,68,68,0.55)' },
+                                '&.Mui-disabled': { background: 'rgba(239,68,68,0.35) !important', color: 'rgba(255,255,255,0.45) !important' },
+                            }}
+                        >
+                            Decline
+                        </Button>
+
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={handleAnswer}
+                            disabled={connecting}
+                            startIcon={
+                                connecting
+                                    ? <CircularProgress size={16} sx={{ color: 'inherit' }} />
+                                    : <CallIcon />
+                            }
+                            style={{ background: '#22c55e', color: '#ffffff', borderRadius: 12 }}
+                            sx={{
+                                fontWeight: 700, fontSize: '0.9rem',
+                                py: 1.25, textTransform: 'none',
+                                boxShadow: '0 4px 16px rgba(34,197,94,0.4)',
+                                '&:hover': { background: '#16a34a !important', boxShadow: '0 6px 20px rgba(34,197,94,0.55)' },
+                                '&.Mui-disabled': { background: 'rgba(34,197,94,0.35) !important', color: 'rgba(255,255,255,0.45) !important' },
+                            }}
+                        >
+                            {connecting ? 'Connecting…' : 'Answer'}
+                        </Button>
+                    </Box>
+                )}
             </Box>
         </Dialog>
     );
