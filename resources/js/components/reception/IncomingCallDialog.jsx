@@ -56,15 +56,21 @@ export default function IncomingCallDialog() {
 
     const handleAnswer = async () => {
         setConnecting(true);
+
+        // Unlock the browser's audio autoplay policy synchronously, before any awaits
+        // consume the click handler's user-activation window. LiveKit creates its own
+        // AudioContext internally; once ANY context is resumed via a gesture the browser
+        // unlocks audio for the whole page, so room.startAudio() will succeed even after
+        // the async connect() call finishes.
+        try { const c = new AudioContext(); c.resume().then(() => c.close()); } catch {}
+
         try {
             const room = new Room({ adaptiveStream: true, dynacast: true });
             room.on(RoomEvent.Disconnected, () => {
                 if (useCallStore.getState().room === room) useCallStore.getState().reset();
             });
-            // startAudio must be called before connect so the AudioContext is running
-            // before the caller's already-published audio track is subscribed.
-            await room.startAudio();
             await room.connect(livekitUrl, token);
+            await room.startAudio();
             await room.localParticipant.setMicrophoneEnabled(true);
             setRoom(room);
             setActive();

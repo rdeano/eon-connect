@@ -61,6 +61,10 @@ export default function ReceptionChat({ unitId, unit }) {
     const handleCall = async () => {
         if (callStore.status !== 'idle') return;
         const calleeName = unit?.owner_name || `Unit ${unit?.unit_number}` || 'Unknown';
+
+        // Unlock audio autoplay before any awaits consume the user-activation window.
+        try { const c = new AudioContext(); c.resume().then(() => c.close()); } catch {}
+
         callStore.setCalling(unitId, calleeName);
         try {
             const res = await api.post('/calls/token', { unit_id: unitId });
