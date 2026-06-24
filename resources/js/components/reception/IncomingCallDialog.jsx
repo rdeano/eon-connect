@@ -7,7 +7,7 @@ import CallIcon    from '@mui/icons-material/Call';
 import CallEndIcon from '@mui/icons-material/CallEnd';
 import MicIcon     from '@mui/icons-material/Mic';
 import MicOffIcon  from '@mui/icons-material/MicOff';
-import { Room, RoomEvent } from 'livekit-client';
+import { Room, RoomEvent, Track } from 'livekit-client';
 import useCallStore from '../../stores/useCallStore';
 import api from '../../services/api';
 import { useRingtone } from '../../hooks/useCallTone';
@@ -66,9 +66,21 @@ export default function IncomingCallDialog() {
 
         try {
             const room = new Room({ adaptiveStream: true, dynacast: true });
+
             room.on(RoomEvent.Disconnected, () => {
                 if (useCallStore.getState().room === room) useCallStore.getState().reset();
             });
+
+            // The raw Room API does not render remote audio automatically — that is only
+            // done by @livekit/components-react. We must attach each subscribed audio
+            // track to an <audio> element so the browser actually plays it.
+            room.on(RoomEvent.TrackSubscribed, (track) => {
+                if (track.kind === Track.Kind.Audio) track.attach();
+            });
+            room.on(RoomEvent.TrackUnsubscribed, (track) => {
+                if (track.kind === Track.Kind.Audio) track.detach();
+            });
+
             await room.connect(livekitUrl, token);
             await room.startAudio();
             await room.localParticipant.setMicrophoneEnabled(true);

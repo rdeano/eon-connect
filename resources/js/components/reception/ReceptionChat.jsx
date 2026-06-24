@@ -6,7 +6,7 @@ import {
 import SendIcon    from '@mui/icons-material/Send';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CallIcon    from '@mui/icons-material/Call';
-import { Room, RoomEvent } from 'livekit-client';
+import { Room, RoomEvent, Track } from 'livekit-client';
 import api from '../../services/api';
 import useChatStore     from '../../stores/useChatStore';
 import useAuthStore     from '../../stores/useAuthStore';
@@ -84,6 +84,13 @@ export default function ReceptionChat({ unitId, unit }) {
 
             room.on(RoomEvent.ParticipantConnected, () => {
                 useCallStore.getState().setRemoteJoined();
+            });
+
+            room.on(RoomEvent.TrackSubscribed, (track) => {
+                if (track.kind === Track.Kind.Audio) track.attach();
+            });
+            room.on(RoomEvent.TrackUnsubscribed, (track) => {
+                if (track.kind === Track.Kind.Audio) track.detach();
             });
 
             await room.connect(livekit_url, token);
