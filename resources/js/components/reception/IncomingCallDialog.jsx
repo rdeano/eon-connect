@@ -83,7 +83,11 @@ export default function IncomingCallDialog() {
 
             await room.connect(livekitUrl, token);
             await room.startAudio();
-            await room.localParticipant.setMicrophoneEnabled(true);
+            try {
+                await room.localParticipant.setMicrophoneEnabled(true);
+            } catch (micErr) {
+                console.warn('[Call] no microphone available, continuing in listen-only mode:', micErr);
+            }
             setRoom(room);
             setActive();
         } catch (e) {

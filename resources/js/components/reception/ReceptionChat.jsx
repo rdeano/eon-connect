@@ -96,7 +96,11 @@ export default function ReceptionChat({ unitId, unit, onBack }) {
 
             await room.connect(livekit_url, token);
             await room.startAudio();
-            await room.localParticipant.setMicrophoneEnabled(true);
+            try {
+                await room.localParticipant.setMicrophoneEnabled(true);
+            } catch (micErr) {
+                console.warn('[Call] no microphone available, continuing in listen-only mode:', micErr);
+            }
 
             callStore.setRoom(room);
             callStore.setActive();
