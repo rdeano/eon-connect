@@ -58,6 +58,8 @@ export default function ReceptionDashboard() {
                     }
                 })
                 .listen('CallInvited', async (e) => {
+                    // Only ring for calls initiated by unit owners, not other receptionists.
+                    if (e.caller_role === 'reception') return;
                     if (useCallStore.getState().status !== 'idle') return;
                     try {
                         const res = await api.post('/calls/token', { unit_id: e.unit_id });

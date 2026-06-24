@@ -14,6 +14,7 @@ class CallInvited implements ShouldBroadcastNow
         public int $unitId,
         public string $callerName,
         public string $room,
+        public string $callerRole,
     ) {}
 
     public function broadcastOn(): array
@@ -27,6 +28,7 @@ class CallInvited implements ShouldBroadcastNow
             'unit_id'     => $this->unitId,
             'caller_name' => $this->callerName,
             'room'        => $this->room,
+            'caller_role' => $this->callerRole,
         ];
     }
 }

@@ -96,7 +96,7 @@ class CallController extends Controller
         $calleeToken = $this->livekitToken('user_' . $callee->id, $callee->name, $room);
 
         try {
-            broadcast(new CallInvited($unitId, $user->name, $room))->toOthers();
+            broadcast(new CallInvited($unitId, $user->name, $room, $user->role))->toOthers();
         } catch (\Throwable) {}
 
         if ($callee->fcm_token) {
