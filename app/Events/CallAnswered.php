@@ -10,7 +10,11 @@ class CallAnswered implements ShouldBroadcastNow
 {
     use Dispatchable;
 
-    public function __construct(public int $unitId, public int $answeredBy) {}
+    public function __construct(
+        public int $unitId,
+        public int $answeredBy,
+        public ?string $socketId = null,
+    ) {}
 
     public function broadcastOn(): array
     {
@@ -22,6 +26,7 @@ class CallAnswered implements ShouldBroadcastNow
         return [
             'unit_id'     => $this->unitId,
             'answered_by' => $this->answeredBy,
+            'socket_id'   => $this->socketId,
         ];
     }
 }
