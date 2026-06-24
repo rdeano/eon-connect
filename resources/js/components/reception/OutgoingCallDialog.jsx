@@ -24,7 +24,7 @@ export default function OutgoingCallDialog() {
 
     const {
         status, direction, unitId, calleeName,
-        isMuted, remoteJoined,
+        isMuted, remoteJoined, noMic,
         setMuted, reset,
     } = useCallStore();
 
@@ -222,6 +222,23 @@ export default function OutgoingCallDialog() {
                     </Typography>
                 </Box>
 
+                {/* ── Listen-only badge (no microphone) ───────── */}
+                {isActive && noMic && (
+                    <Box sx={{ textAlign: 'center', pt: 1.5 }}>
+                        <Box component="span" sx={{
+                            display: 'inline-flex', alignItems: 'center', gap: 0.75,
+                            px: 1.5, py: 0.5, borderRadius: '20px',
+                            bgcolor: 'rgba(251,191,36,0.12)',
+                            border: '1px solid rgba(251,191,36,0.3)',
+                        }}>
+                            <MicOffIcon sx={{ fontSize: 13, color: '#fbbf24' }} />
+                            <Typography sx={{ color: '#fbbf24', fontSize: '0.7rem', fontWeight: 600 }}>
+                                Listen only · No microphone detected
+                            </Typography>
+                        </Box>
+                    </Box>
+                )}
+
                 {/* ── Auto-cancel badge (ringing phase only) ───── */}
                 {isRinging && (
                     <Box sx={{ textAlign: 'center', pt: 2, pb: 0 }}>
@@ -247,7 +264,7 @@ export default function OutgoingCallDialog() {
 
                 {/* ── Action buttons ────────────────────────────── */}
                 <Box sx={{ display: 'flex', gap: 1.5, px: 3, pt: 3, pb: 3.5, justifyContent: 'center' }}>
-                    {isActive && (
+                    {isActive && !noMic && (
                         <Tooltip title={isMuted ? 'Unmute' : 'Mute'}>
                             <IconButton
                                 onClick={handleToggleMute}

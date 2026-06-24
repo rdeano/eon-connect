@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
     Box, TextField, Typography, Stack, Avatar,
     IconButton, Tooltip, CircularProgress,
+    Snackbar, Alert,
 } from '@mui/material';
 import SendIcon        from '@mui/icons-material/Send';
 import DoneAllIcon     from '@mui/icons-material/DoneAll';
@@ -30,8 +31,9 @@ function formatDate(ts) {
 
 
 export default function ReceptionChat({ unitId, unit, onBack }) {
-    const [input,   setInput]   = useState('');
-    const [sending, setSending] = useState(false);
+    const [input,     setInput]     = useState('');
+    const [sending,   setSending]   = useState(false);
+    const [callError, setCallError] = useState(null);
     const bottomRef = useRef(null);
 
     const { messages, setMessages, addMessage, markUnitMessagesRead } = useChatStore();
@@ -100,12 +102,14 @@ export default function ReceptionChat({ unitId, unit, onBack }) {
                 await room.localParticipant.setMicrophoneEnabled(true);
             } catch (micErr) {
                 console.warn('[Call] no microphone available, continuing in listen-only mode:', micErr);
+                useCallStore.getState().setNoMic(true);
             }
 
             callStore.setRoom(room);
             callStore.setActive();
         } catch (e) {
             console.error('[Call] start failed:', e);
+            setCallError('Could not start the call. Please check your connection and try again.');
             useCallStore.getState().reset();
         }
     };
@@ -271,6 +275,17 @@ export default function ReceptionChat({ unitId, unit, onBack }) {
                     <div ref={bottomRef} />
                 </Stack>
             </Box>
+
+            <Snackbar
+                open={!!callError}
+                autoHideDuration={6000}
+                onClose={() => setCallError(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert severity="error" onClose={() => setCallError(null)} sx={{ width: '100%' }}>
+                    {callError}
+                </Alert>
+            </Snackbar>
 
             {/* ── Input ───────────────────────────────────────────────────── */}
             <Box sx={{

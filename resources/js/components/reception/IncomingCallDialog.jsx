@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
     Dialog, Box, Typography, Avatar,
     CircularProgress, Button, IconButton, Tooltip,
+    Snackbar, Alert,
 } from '@mui/material';
 import CallIcon    from '@mui/icons-material/Call';
 import CallEndIcon from '@mui/icons-material/CallEnd';
@@ -23,7 +24,8 @@ export default function IncomingCallDialog() {
     const [connecting,   setConnecting]   = useState(false);
     const [ringSeconds,  setRingSeconds]  = useState(0);
     const [callSeconds,  setCallSeconds]  = useState(0);
-    const { status, direction, unitId, callerName, token, livekitUrl, isMuted, setRoom, setActive, setMuted, reset } = useCallStore();
+    const [callError,    setCallError]    = useState(null);
+    const { status, direction, unitId, callerName, token, livekitUrl, isMuted, noMic, setRoom, setActive, setMuted, reset } = useCallStore();
 
     const isInbound = direction === 'inbound';
     const isRinging = status === 'ringing';
@@ -87,11 +89,13 @@ export default function IncomingCallDialog() {
                 await room.localParticipant.setMicrophoneEnabled(true);
             } catch (micErr) {
                 console.warn('[Call] no microphone available, continuing in listen-only mode:', micErr);
+                useCallStore.getState().setNoMic(true);
             }
             setRoom(room);
             setActive();
         } catch (e) {
             console.error('[Call] answer failed:', e);
+            setCallError('Could not connect to the call. Please try again.');
             reset();
         } finally {
             setConnecting(false);
@@ -259,6 +263,23 @@ export default function IncomingCallDialog() {
                     </Typography>
                 </Box>
 
+                {/* ── Listen-only badge (no microphone) ───────── */}
+                {isActive && noMic && (
+                    <Box sx={{ textAlign: 'center', pt: 1.5 }}>
+                        <Box component="span" sx={{
+                            display: 'inline-flex', alignItems: 'center', gap: 0.75,
+                            px: 1.5, py: 0.5, borderRadius: '20px',
+                            bgcolor: 'rgba(251,191,36,0.12)',
+                            border: '1px solid rgba(251,191,36,0.3)',
+                        }}>
+                            <MicOffIcon sx={{ fontSize: 13, color: '#fbbf24' }} />
+                            <Typography sx={{ color: '#fbbf24', fontSize: '0.7rem', fontWeight: 600 }}>
+                                Listen only · No microphone detected
+                            </Typography>
+                        </Box>
+                    </Box>
+                )}
+
                 {/* ── Auto-decline badge (ringing only) ────────── */}
                 {isRinging && (
                     <Box sx={{ textAlign: 'center', pt: 2, pb: 0 }}>
@@ -287,7 +308,7 @@ export default function IncomingCallDialog() {
                 {/* ── Action buttons ────────────────────────────── */}
                 {isActive ? (
                     <Box sx={{ display: 'flex', gap: 1.5, px: 3, pt: 3, pb: 3.5, justifyContent: 'center' }}>
-                        <Tooltip title={isMuted ? 'Unmute' : 'Mute'}>
+                        {!noMic && <Tooltip title={isMuted ? 'Unmute' : 'Mute'}>
                             <IconButton
                                 onClick={handleToggleMute}
                                 sx={{
@@ -302,7 +323,7 @@ export default function IncomingCallDialog() {
                             >
                                 {isMuted ? <MicOffIcon /> : <MicIcon />}
                             </IconButton>
-                        </Tooltip>
+                        </Tooltip>}
 
                         <Button
                             variant="contained"
@@ -364,5 +385,16 @@ export default function IncomingCallDialog() {
                 )}
             </Box>
         </Dialog>
+
+        <Snackbar
+            open={!!callError}
+            autoHideDuration={6000}
+            onClose={() => setCallError(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+            <Alert severity="error" onClose={() => setCallError(null)} sx={{ width: '100%' }}>
+                {callError}
+            </Alert>
+        </Snackbar>
     );
 }

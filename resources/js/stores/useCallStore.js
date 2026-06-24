@@ -11,11 +11,13 @@ const useCallStore = create((set) => ({
     livekitUrl: null,
     isMuted: false,
     remoteJoined: false,
+    noMic: false,
 
     setRoom:         (room)                     => set({ room }),
     setCalling:      (unitId, calleeName)        => set({ status: 'calling', direction: 'outbound', unitId, calleeName }),
     setActive:       ()                          => set({ status: 'active' }),
     setMuted:        (isMuted)                  => set({ isMuted }),
+    setNoMic:        (noMic)                    => set({ noMic }),
     setRemoteJoined: ()                          => set({ remoteJoined: true }),
 
     setRinging: (unitId, callerName, token, livekitUrl) =>
@@ -24,7 +26,7 @@ const useCallStore = create((set) => ({
     reset: () => set({
         status: 'idle', direction: null, room: null, unitId: null,
         callerName: null, calleeName: null, token: null, livekitUrl: null,
-        isMuted: false, remoteJoined: false,
+        isMuted: false, remoteJoined: false, noMic: false,
     }),
 }));
 
