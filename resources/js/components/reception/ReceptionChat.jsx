@@ -3,9 +3,10 @@ import {
     Box, TextField, Typography, Stack, Avatar,
     IconButton, Tooltip, CircularProgress,
 } from '@mui/material';
-import SendIcon    from '@mui/icons-material/Send';
-import DoneAllIcon from '@mui/icons-material/DoneAll';
-import CallIcon    from '@mui/icons-material/Call';
+import SendIcon        from '@mui/icons-material/Send';
+import DoneAllIcon     from '@mui/icons-material/DoneAll';
+import CallIcon        from '@mui/icons-material/Call';
+import ArrowBackIcon   from '@mui/icons-material/ArrowBack';
 import { Room, RoomEvent, Track } from 'livekit-client';
 import api from '../../services/api';
 import useChatStore     from '../../stores/useChatStore';
@@ -28,7 +29,7 @@ function formatDate(ts) {
 }
 
 
-export default function ReceptionChat({ unitId, unit }) {
+export default function ReceptionChat({ unitId, unit, onBack }) {
     const [input,   setInput]   = useState('');
     const [sending, setSending] = useState(false);
     const bottomRef = useRef(null);
@@ -128,15 +129,21 @@ export default function ReceptionChat({ unitId, unit }) {
 
             {/* ── Chat header ─────────────────────────────────────────────── */}
             <Box sx={{
-                px: 3, py: 1.5,
+                px: { xs: 1.5, sm: 3 }, py: 1.5,
                 bgcolor: 'white',
                 borderBottom: '1px solid',
                 borderColor: 'divider',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1.5,
+                gap: 1,
                 boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
             }}>
+                {onBack && (
+                    <IconButton size="small" onClick={onBack} sx={{ flexShrink: 0 }}>
+                        <ArrowBackIcon fontSize="small" />
+                    </IconButton>
+                )}
+
                 <Avatar sx={{
                     background: 'linear-gradient(135deg, #1e6fc0 0%, #0d3b73 100%)',
                     fontWeight: 700, fontSize: 13,
@@ -194,7 +201,7 @@ export default function ReceptionChat({ unitId, unit }) {
             </Box>
 
             {/* ── Messages ────────────────────────────────────────────────── */}
-            <Box sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2.5 }}>
+            <Box sx={{ flex: 1, overflowY: 'auto', px: { xs: 1.5, sm: 3 }, py: 2.5 }}>
                 {unitMessages.length === 0 && (
                     <Box sx={{ textAlign: 'center', mt: 8 }}>
                         <Typography variant="body2" color="text.disabled">
@@ -224,7 +231,7 @@ export default function ReceptionChat({ unitId, unit }) {
                                     </Box>
                                 )}
                                 <Box sx={{ display: 'flex', justifyContent: isSent ? 'flex-end' : 'flex-start', mb: 0.75 }}>
-                                    <Box sx={{ maxWidth: '65%' }}>
+                                    <Box sx={{ maxWidth: { xs: '82%', sm: '65%' } }}>
                                         <Box sx={{
                                             px: 2.5, py: 1.25,
                                             bgcolor: isSent ? 'primary.main' : 'white',
@@ -263,7 +270,7 @@ export default function ReceptionChat({ unitId, unit }) {
 
             {/* ── Input ───────────────────────────────────────────────────── */}
             <Box sx={{
-                px: 2.5, py: 2,
+                px: { xs: 1.5, sm: 2.5 }, py: { xs: 1.5, sm: 2 },
                 bgcolor: 'white',
                 borderTop: '1px solid',
                 borderColor: 'divider',

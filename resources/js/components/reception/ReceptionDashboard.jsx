@@ -1,21 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
-import ForumIcon from '@mui/icons-material/Forum';
-import UnitList          from './UnitList';
-import ReceptionChat     from './ReceptionChat';
-import IncomingCallDialog  from './IncomingCallDialog';
-import OutgoingCallDialog  from './OutgoingCallDialog';
-import TopBar            from '../common/TopBar';
-import api               from '../../services/api';
-import useChatStore      from '../../stores/useChatStore';
-import usePresenceStore  from '../../stores/usePresenceStore';
-import useCallStore      from '../../stores/useCallStore';
-import echo              from '../../echo';
+import { useTheme }         from '@mui/material/styles';
+import useMediaQuery        from '@mui/material/useMediaQuery';
+import ForumIcon            from '@mui/icons-material/Forum';
+import UnitList             from './UnitList';
+import ReceptionChat        from './ReceptionChat';
+import IncomingCallDialog   from './IncomingCallDialog';
+import OutgoingCallDialog   from './OutgoingCallDialog';
+import TopBar               from '../common/TopBar';
+import api                  from '../../services/api';
+import useChatStore         from '../../stores/useChatStore';
+import usePresenceStore     from '../../stores/usePresenceStore';
+import useCallStore         from '../../stores/useCallStore';
+import echo                 from '../../echo';
 
 export default function ReceptionDashboard() {
     const [units, setUnits] = useState([]);
+    const [mobileShowChat, setMobileShowChat] = useState(false);
+
     const { activeUnitId, setActiveUnit, addMessage, setUnreadCount, incrementUnread } = useChatStore();
     const { setAll, setOnline, setOffline } = usePresenceStore();
+
+    const theme    = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const activeUnitIdRef = useRef(activeUnitId);
     useEffect(() => { activeUnitIdRef.current = activeUnitId; }, [activeUnitId]);
@@ -51,7 +58,6 @@ export default function ReceptionDashboard() {
                     }
                 })
                 .listen('CallInvited', async (e) => {
-                    // Ignore if we're already in or initiated a call.
                     if (useCallStore.getState().status !== 'idle') return;
                     try {
                         const res = await api.post('/calls/token', { unit_id: e.unit_id });
@@ -66,7 +72,6 @@ export default function ReceptionDashboard() {
                 .listen('CallEnded', (e) => {
                     const state = useCallStore.getState();
                     if (state.unitId === e.unit_id) {
-                        // Remote party hung up — disconnect our room (if connected) and reset
                         if (state.room) {
                             try { state.room.disconnect(); } catch {}
                         }
@@ -78,33 +83,55 @@ export default function ReceptionDashboard() {
         return () => units.forEach((unit) => echo.leave(`conversation.${unit.id}`));
     }, [units]);
 
+    const handleSelectUnit = (unitId) => {
+        setActiveUnit(unitId);
+        if (isMobile) setMobileShowChat(true);
+    };
+
+    // Sidebar: full-width on mobile; hidden when chat is open on mobile
+    const sidebarSx = {
+        width:       { xs: '100%', sm: 300 },
+        flexShrink:  0,
+        borderRight: '1px solid',
+        borderColor: 'divider',
+        overflow:    'hidden',
+        display:     isMobile ? (mobileShowChat ? 'none' : 'flex') : 'flex',
+        flexDirection: 'column',
+    };
+
+    // Chat panel: full-width on mobile; hidden when list is shown on mobile
+    const chatPanelSx = {
+        flex:          1,
+        overflow:      'hidden',
+        bgcolor:       '#f0f4f9',
+        display:       isMobile ? (mobileShowChat ? 'flex' : 'none') : 'flex',
+        flexDirection: 'column',
+    };
+
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
             <TopBar />
 
             <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                {/* Sidebar */}
-                <Box sx={{
-                    width: 300,
-                    flexShrink: 0,
-                    borderRight: '1px solid',
-                    borderColor: 'divider',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                }}>
+                {/* Sidebar / unit list */}
+                <Box sx={sidebarSx}>
                     <UnitList
                         units={units}
                         activeUnitId={activeUnitId}
-                        onSelectUnit={setActiveUnit}
+                        onSelectUnit={handleSelectUnit}
                     />
                 </Box>
 
                 {/* Chat panel */}
-                <Box sx={{ flex: 1, overflow: 'hidden', bgcolor: '#f0f4f9' }}>
+                <Box sx={chatPanelSx}>
                     {activeUnitId
-                        ? <ReceptionChat unitId={activeUnitId} unit={activeUnit} />
-                        : (
+                        ? (
+                            <ReceptionChat
+                                unitId={activeUnitId}
+                                unit={activeUnit}
+                                onBack={isMobile ? () => setMobileShowChat(false) : undefined}
+                            />
+                        ) : (
                             <Box sx={{
                                 display: 'flex', flexDirection: 'column',
                                 alignItems: 'center', justifyContent: 'center',
@@ -123,7 +150,7 @@ export default function ReceptionDashboard() {
                                         No conversation selected
                                     </Typography>
                                     <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 0.25 }}>
-                                        Choose a unit from the sidebar to start messaging.
+                                        Choose a unit from the list to start messaging.
                                     </Typography>
                                 </Box>
                             </Box>
@@ -132,7 +159,6 @@ export default function ReceptionDashboard() {
                 </Box>
             </Box>
 
-            {/* Global call dialogs — appear over any screen state */}
             <IncomingCallDialog />
             <OutgoingCallDialog />
         </Box>

@@ -6,6 +6,8 @@ import {
     CircularProgress, Snackbar, Alert, MenuItem, Select, FormControl,
     InputLabel, Divider,
 } from '@mui/material';
+import { useTheme }  from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import AddIcon       from '@mui/icons-material/Add';
 import EditIcon      from '@mui/icons-material/Edit';
 import DeleteIcon    from '@mui/icons-material/Delete';
@@ -288,6 +290,9 @@ export default function UnitOwnersPage() {
     const [search,  setSearch]  = useState('');
     const [toast,   setToast]   = useState(null);
 
+    const theme    = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
     const [unitDialog,    setUnitDialog]    = useState({ open: false, unit: null });
     const [accountDialog, setAccountDialog] = useState({ open: false, unit: null });
     const [deleteDialog,  setDeleteDialog]  = useState({ open: false, unit: null });
@@ -335,9 +340,16 @@ export default function UnitOwnersPage() {
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
             <TopBar />
 
-            <Box sx={{ flex: 1, overflow: 'auto', bgcolor: '#f0f4f9', p: 3 }}>
+            <Box sx={{ flex: 1, overflow: 'auto', bgcolor: '#f0f4f9', p: { xs: 2, sm: 3 } }}>
                 {/* Page header */}
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { xs: 'stretch', sm: 'center' },
+                    justifyContent: 'space-between',
+                    gap: { xs: 1.5, sm: 0 },
+                    mb: 3,
+                }}>
                     <Box>
                         <Typography variant="h6" fontWeight={700}>Unit Owners</Typography>
                         <Typography variant="caption" color="text.secondary">
@@ -348,7 +360,7 @@ export default function UnitOwnersPage() {
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={() => setUnitDialog({ open: true, unit: null })}
-                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, alignSelf: { xs: 'flex-start', sm: 'auto' } }}
                     >
                         Add Unit
                     </Button>
@@ -358,6 +370,7 @@ export default function UnitOwnersPage() {
                 <Box sx={{ mb: 2 }}>
                     <TextField
                         size="small"
+                        fullWidth={isMobile}
                         placeholder="Search by unit #, owner name, or email…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -369,7 +382,7 @@ export default function UnitOwnersPage() {
                             ),
                         }}
                         sx={{
-                            width: 340,
+                            width: { xs: '100%', sm: 340 },
                             '& .MuiOutlinedInput-root': {
                                 borderRadius: 2, bgcolor: 'white',
                             },
@@ -377,72 +390,127 @@ export default function UnitOwnersPage() {
                     />
                 </Box>
 
-                {/* Table */}
-                <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                                {['Unit #', 'Floor', 'Building', 'Owner Name', 'Status', 'Login Account', 'Actions'].map((h) => (
-                                    <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', py: 1.5 }}>
-                                        {h}
-                                    </TableCell>
-                                ))}
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                                        <CircularProgress size={28} />
-                                    </TableCell>
-                                </TableRow>
-                            ) : filtered.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                                        <Typography variant="body2" color="text.disabled">
-                                            {search ? 'No results match your search.' : 'No units yet. Click "Add Unit" to get started.'}
-                                        </Typography>
-                                    </TableCell>
-                                </TableRow>
-                            ) : filtered.map((unit) => (
-                                <TableRow key={unit.id} hover sx={{ '&:last-child td': { border: 0 } }}>
-                                    <TableCell sx={{ fontWeight: 600 }}>{unit.unit_number}</TableCell>
-                                    <TableCell>{unit.floor || '—'}</TableCell>
-                                    <TableCell>{unit.building || '—'}</TableCell>
-                                    <TableCell>{unit.owner_name}</TableCell>
-                                    <TableCell><StatusChip status={unit.status} /></TableCell>
-                                    <TableCell><AccountChip owner={unit.owner} /></TableCell>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                            <Tooltip title="Edit unit">
-                                                <IconButton size="small" onClick={() => setUnitDialog({ open: true, unit })}>
-                                                    <EditIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title={unit.owner ? 'Manage login account' : 'Create login account'}>
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => setAccountDialog({ open: true, unit })}
-                                                    sx={{ color: unit.owner ? 'primary.main' : 'text.secondary' }}
-                                                >
-                                                    {unit.owner ? <ManageAccountsIcon fontSize="small" /> : <PersonAddIcon fontSize="small" />}
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Delete unit">
-                                                <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, unit })}>
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
+                {/* Loading */}
+                {loading && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                        <CircularProgress size={28} />
+                    </Box>
+                )}
+
+                {/* Empty state */}
+                {!loading && filtered.length === 0 && (
+                    <Box sx={{ textAlign: 'center', py: 6 }}>
+                        <Typography variant="body2" color="text.disabled">
+                            {search ? 'No results match your search.' : 'No units yet. Click "Add Unit" to get started.'}
+                        </Typography>
+                    </Box>
+                )}
+
+                {/* Mobile: card list */}
+                {!loading && filtered.length > 0 && isMobile && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        {filtered.map((unit) => (
+                            <Paper key={unit.id} elevation={0} sx={{
+                                borderRadius: 2.5, border: '1px solid', borderColor: 'divider', overflow: 'hidden',
+                            }}>
+                                <Box sx={{ p: 2 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                        <Box>
+                                            <Typography fontWeight={700} fontSize="0.95rem">
+                                                Unit {unit.unit_number}
+                                            </Typography>
+                                            {(unit.floor || unit.building) && (
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {[unit.floor && `Floor ${unit.floor}`, unit.building && `Bldg ${unit.building}`].filter(Boolean).join(' · ')}
+                                                </Typography>
+                                            )}
                                         </Box>
-                                    </TableCell>
+                                        <StatusChip status={unit.status} />
+                                    </Box>
+
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                        {unit.owner_name}
+                                    </Typography>
+
+                                    <AccountChip owner={unit.owner} />
+                                </Box>
+
+                                <Divider />
+
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, px: 1.5, py: 1 }}>
+                                    <Tooltip title="Edit unit">
+                                        <IconButton size="small" onClick={() => setUnitDialog({ open: true, unit })}>
+                                            <EditIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title={unit.owner ? 'Manage login account' : 'Create login account'}>
+                                        <IconButton size="small" onClick={() => setAccountDialog({ open: true, unit })}
+                                            sx={{ color: unit.owner ? 'primary.main' : 'text.secondary' }}>
+                                            {unit.owner ? <ManageAccountsIcon fontSize="small" /> : <PersonAddIcon fontSize="small" />}
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Delete unit">
+                                        <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, unit })}>
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Box>
+                            </Paper>
+                        ))}
+                    </Box>
+                )}
+
+                {/* Desktop: table */}
+                {!loading && filtered.length > 0 && !isMobile && (
+                    <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                                    {['Unit #', 'Floor', 'Building', 'Owner Name', 'Status', 'Login Account', 'Actions'].map((h) => (
+                                        <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', py: 1.5 }}>
+                                            {h}
+                                        </TableCell>
+                                    ))}
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                                {filtered.map((unit) => (
+                                    <TableRow key={unit.id} hover sx={{ '&:last-child td': { border: 0 } }}>
+                                        <TableCell sx={{ fontWeight: 600 }}>{unit.unit_number}</TableCell>
+                                        <TableCell>{unit.floor || '—'}</TableCell>
+                                        <TableCell>{unit.building || '—'}</TableCell>
+                                        <TableCell>{unit.owner_name}</TableCell>
+                                        <TableCell><StatusChip status={unit.status} /></TableCell>
+                                        <TableCell><AccountChip owner={unit.owner} /></TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                                <Tooltip title="Edit unit">
+                                                    <IconButton size="small" onClick={() => setUnitDialog({ open: true, unit })}>
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title={unit.owner ? 'Manage login account' : 'Create login account'}>
+                                                    <IconButton size="small" onClick={() => setAccountDialog({ open: true, unit })}
+                                                        sx={{ color: unit.owner ? 'primary.main' : 'text.secondary' }}>
+                                                        {unit.owner ? <ManageAccountsIcon fontSize="small" /> : <PersonAddIcon fontSize="small" />}
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Delete unit">
+                                                    <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, unit })}>
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
 
                 {/* Row count */}
-                {!loading && (
+                {!loading && filtered.length > 0 && (
                     <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 1.5, textAlign: 'right' }}>
                         {filtered.length} unit{filtered.length !== 1 ? 's' : ''}
                         {search && ` matching "${search}"`}

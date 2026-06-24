@@ -1,4 +1,6 @@
 import { AppBar, Toolbar, Typography, Box, Avatar, IconButton, Tooltip, Button } from '@mui/material';
+import { useTheme }         from '@mui/material/styles';
+import useMediaQuery        from '@mui/material/useMediaQuery';
 import ApartmentIcon  from '@mui/icons-material/Apartment';
 import LogoutIcon     from '@mui/icons-material/Logout';
 import ForumIcon      from '@mui/icons-material/Forum';
@@ -16,8 +18,10 @@ const NAV = [
 
 export default function TopBar() {
     const { user, logout } = useAuthStore();
-    const navigate = useNavigate();
+    const navigate  = useNavigate();
     const { pathname } = useLocation();
+    const theme     = useTheme();
+    const isMobile  = useMediaQuery(theme.breakpoints.down('sm'));
 
     const handleLogout = async () => {
         try { await api.post('/auth/logout'); } catch {}
@@ -52,27 +56,29 @@ export default function TopBar() {
                         {NAV.map(({ label, icon: Icon, path }) => {
                             const active = pathname === path;
                             return (
-                                <Button
-                                    key={path}
-                                    onClick={() => navigate(path)}
-                                    startIcon={<Icon sx={{ fontSize: '1rem !important' }} />}
-                                    size="small"
-                                    sx={{
-                                        color: active ? 'white' : 'rgba(255,255,255,0.65)',
-                                        bgcolor: active ? 'rgba(255,255,255,0.18)' : 'transparent',
-                                        borderRadius: '8px',
-                                        textTransform: 'none',
-                                        fontWeight: active ? 700 : 500,
-                                        fontSize: '0.8rem',
-                                        px: 1.5, py: 0.6,
-                                        '&:hover': {
-                                            bgcolor: 'rgba(255,255,255,0.12)',
-                                            color: 'white',
-                                        },
-                                    }}
-                                >
-                                    {label}
-                                </Button>
+                                <Tooltip key={path} title={isMobile ? label : ''}>
+                                    <Button
+                                        onClick={() => navigate(path)}
+                                        startIcon={<Icon sx={{ fontSize: '1rem !important', mr: isMobile ? '-4px' : undefined }} />}
+                                        size="small"
+                                        sx={{
+                                            color: active ? 'white' : 'rgba(255,255,255,0.65)',
+                                            bgcolor: active ? 'rgba(255,255,255,0.18)' : 'transparent',
+                                            borderRadius: '8px',
+                                            textTransform: 'none',
+                                            fontWeight: active ? 700 : 500,
+                                            fontSize: '0.8rem',
+                                            minWidth: { xs: 36, sm: 'auto' },
+                                            px: { xs: 1, sm: 1.5 }, py: 0.6,
+                                            '&:hover': {
+                                                bgcolor: 'rgba(255,255,255,0.12)',
+                                                color: 'white',
+                                            },
+                                        }}
+                                    >
+                                        {!isMobile && label}
+                                    </Button>
+                                </Tooltip>
                             );
                         })}
                     </Box>
@@ -90,7 +96,8 @@ export default function TopBar() {
                     }}>
                         {initials}
                     </Avatar>
-                    <Typography variant="body2" color="white" fontWeight={600} sx={{ lineHeight: 1 }}>
+                    <Typography variant="body2" color="white" fontWeight={600}
+                        sx={{ lineHeight: 1, display: { xs: 'none', sm: 'block' } }}>
                         {user?.name}
                     </Typography>
                 </Box>
