@@ -73,7 +73,9 @@ class CallController extends Controller
             return response()->json(['message' => 'Already answered by another receptionist.'], 409);
         }
 
-        broadcast(new CallAnswered($unitId, $request->user()->id))->toOthers();
+        // Broadcast to ALL sockets — the frontend filters by answered_by user ID
+        // so the answering tab ignores the event while other tabs dismiss their dialogs.
+        broadcast(new CallAnswered($unitId, $request->user()->id));
 
         return response()->json(['success' => true]);
     }

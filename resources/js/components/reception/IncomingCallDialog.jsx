@@ -50,7 +50,16 @@ export default function IncomingCallDialog() {
     useEffect(() => {
         if (!isRinging) return;
         const t = setTimeout(async () => {
-            try { await api.post('/calls/end', { unit_id: unitId }); } catch {}
+            // Try to claim the call before ending it. If 409, someone else already
+            // answered — just reset without broadcasting CallEnded to their active call.
+            try {
+                await api.post('/calls/answer', { unit_id: unitId });
+                await api.post('/calls/end', { unit_id: unitId });
+            } catch (e) {
+                if (e?.response?.status !== 409) {
+                    try { await api.post('/calls/end', { unit_id: unitId }); } catch {}
+                }
+            }
             reset();
         }, TIMEOUT * 1000);
         return () => clearTimeout(t);
