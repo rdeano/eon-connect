@@ -129,6 +129,7 @@ export default function IncomingCallDialog() {
     const initial   = (callerName || '?').charAt(0).toUpperCase();
 
     return (
+        <>
         <Dialog
             open={isRinging || isActive}
             maxWidth={false}
@@ -396,5 +397,6 @@ export default function IncomingCallDialog() {
                 {callError}
             </Alert>
         </Snackbar>
+        </>
     );
 }
