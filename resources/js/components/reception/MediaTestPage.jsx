@@ -7,10 +7,10 @@ import MicIcon         from '@mui/icons-material/Mic';
 import MicOffIcon      from '@mui/icons-material/MicOff';
 import VolumeUpIcon    from '@mui/icons-material/VolumeUp';
 import VolumeOffIcon   from '@mui/icons-material/VolumeOff';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon       from '@mui/icons-material/Error';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import RefreshIcon     from '@mui/icons-material/Refresh';
+import CheckCircleIcon          from '@mui/icons-material/CheckCircle';
+import ErrorIcon                from '@mui/icons-material/Error';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import RefreshIcon              from '@mui/icons-material/Refresh';
 import TopBar from '../common/TopBar';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ function StatusChip({ state }) {
     if (state === 'ok')      return <Chip icon={<CheckCircleIcon />} label="Working"     color="success" size="small" />;
     if (state === 'error')   return <Chip icon={<ErrorIcon />}       label="Not working" color="error"   size="small" />;
     if (state === 'denied')  return <Chip icon={<ErrorIcon />}       label="Permission denied" color="error" size="small" />;
-    return                          <Chip icon={<HelpOutlineIcon />}  label="Not tested"  color="default" size="small" />;
+    return                          <Chip icon={<RadioButtonUncheckedIcon />}  label="Not tested"  color="default" size="small" />;
 }
 
 // Plays a short 440 Hz beep through the Web Audio API.
@@ -327,7 +327,7 @@ function SummaryRow({ label, state, hint }) {
         ? <CheckCircleIcon sx={{ color: 'success.main', fontSize: 18 }} />
         : state === 'error' || state === 'denied'
             ? <ErrorIcon sx={{ color: 'error.main', fontSize: 18 }} />
-            : <HelpOutlineIcon sx={{ color: 'text.disabled', fontSize: 18 }} />;
+            : <RadioButtonUncheckedIcon sx={{ color: 'text.disabled', fontSize: 18 }} />;
 
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
