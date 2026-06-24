@@ -6,6 +6,7 @@ import theme from './theme';
 import LoginPage from './components/common/LoginPage';
 import ReceptionDashboard from './components/reception/ReceptionDashboard';
 import UnitOwnersPage from './components/reception/UnitOwnersPage';
+import MediaTestPage from './components/reception/MediaTestPage';
 import UnitOwnerPlaceholder from './components/unit/UnitOwnerPlaceholder';
 import useAuthStore from './stores/useAuthStore';
 import api from './services/api';
@@ -65,6 +66,11 @@ function App() {
                     <Route path="/reception/units" element={
                         <ProtectedRoute role="reception">
                             <UnitOwnersPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/reception/media-test" element={
+                        <ProtectedRoute role="reception">
+                            <MediaTestPage />
                         </ProtectedRoute>
                     } />
                     <Route path="/chat" element={

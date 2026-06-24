@@ -3,13 +3,15 @@ import ApartmentIcon  from '@mui/icons-material/Apartment';
 import LogoutIcon     from '@mui/icons-material/Logout';
 import ForumIcon      from '@mui/icons-material/Forum';
 import PeopleAltIcon  from '@mui/icons-material/PeopleAlt';
+import HeadsetMicIcon from '@mui/icons-material/HeadsetMic';
 import useAuthStore from '../../stores/useAuthStore';
 import api from '../../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const NAV = [
-    { label: 'Messages',    icon: ForumIcon,     path: '/reception' },
-    { label: 'Unit Owners', icon: PeopleAltIcon, path: '/reception/units' },
+    { label: 'Messages',    icon: ForumIcon,      path: '/reception' },
+    { label: 'Unit Owners', icon: PeopleAltIcon,  path: '/reception/units' },
+    { label: 'Media Test',  icon: HeadsetMicIcon, path: '/reception/media-test' },
 ];
 
 export default function TopBar() {
