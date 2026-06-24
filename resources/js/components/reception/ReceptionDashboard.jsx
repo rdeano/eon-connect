@@ -12,6 +12,7 @@ import api                  from '../../services/api';
 import useChatStore         from '../../stores/useChatStore';
 import usePresenceStore     from '../../stores/usePresenceStore';
 import useCallStore         from '../../stores/useCallStore';
+import useAuthStore         from '../../stores/useAuthStore';
 import echo                 from '../../echo';
 
 export default function ReceptionDashboard() {
@@ -20,6 +21,7 @@ export default function ReceptionDashboard() {
 
     const { activeUnitId, setActiveUnit, addMessage, setUnreadCount, incrementUnread } = useChatStore();
     const { setAll, setOnline, setOffline } = usePresenceStore();
+    const { user } = useAuthStore();
 
     const theme    = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -70,6 +72,8 @@ export default function ReceptionDashboard() {
                     }
                 })
                 .listen('CallAnswered', (e) => {
+                    // If we were the one who answered, ignore — don't close our own dialog.
+                    if (e.answered_by === user?.id) return;
                     // Another receptionist answered — dismiss our ringing dialog.
                     const state = useCallStore.getState();
                     if (state.status === 'ringing' && state.unitId === e.unit_id) {
