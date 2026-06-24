@@ -67,6 +67,18 @@ export default function IncomingCallDialog() {
         try { const c = new AudioContext(); c.resume().then(() => c.close()); } catch {}
 
         try {
+            // Atomically claim the call — 409 means another receptionist already answered.
+            try {
+                await api.post('/calls/answer', { unit_id: unitId });
+            } catch (claimErr) {
+                if (claimErr?.response?.status === 409) {
+                    setCallError('This call was already answered by another receptionist.');
+                    reset();
+                    return;
+                }
+                throw claimErr;
+            }
+
             const room = new Room({ adaptiveStream: true, dynacast: true });
 
             room.on(RoomEvent.Disconnected, () => {

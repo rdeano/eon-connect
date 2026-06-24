@@ -43,6 +43,7 @@ Route::prefix('v1')->group(function () {
         // Voice calls (LiveKit)
         Route::post('/calls/token',  [CallController::class, 'token']);
         Route::post('/calls/invite', [CallController::class, 'invite']);
+        Route::post('/calls/answer', [CallController::class, 'answer']);
         Route::post('/calls/end',    [CallController::class, 'end']);
     });
 });

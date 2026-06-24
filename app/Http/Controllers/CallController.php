@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CallAnswered;
 use App\Events\CallEnded;
 use App\Events\CallInvited;
+use Illuminate\Support\Facades\Cache;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,6 +58,24 @@ class CallController extends Controller
             'token'       => $token,
             'livekit_url' => config('services.livekit.url'),
         ]);
+    }
+
+    /** Atomically claim an incoming call so only one receptionist can answer it. */
+    public function answer(Request $request): JsonResponse
+    {
+        $request->validate(['unit_id' => 'required|integer']);
+
+        $unitId = $request->unit_id;
+        $key    = 'call_claimed:' . $unitId;
+
+        // Cache::add returns false if the key already exists — atomic set-if-not-exists.
+        if (!Cache::add($key, $request->user()->id, now()->addMinutes(5))) {
+            return response()->json(['message' => 'Already answered by another receptionist.'], 409);
+        }
+
+        broadcast(new CallAnswered($unitId, $request->user()->id))->toOthers();
+
+        return response()->json(['success' => true]);
     }
 
     /** Notify the other party of an incoming call via FCM + Reverb. */
@@ -114,6 +134,8 @@ class CallController extends Controller
 
         $user   = $request->user();
         $unitId = $request->unit_id;
+
+        Cache::forget('call_claimed:' . $unitId);
 
         $other = $user->role === 'reception'
             ? User::where('unit_id', $unitId)->where('role', 'unit_owner')->first()

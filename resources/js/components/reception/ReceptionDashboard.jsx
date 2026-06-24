@@ -69,6 +69,13 @@ export default function ReceptionDashboard() {
                         console.error('[Call] failed to get token for incoming call:', err);
                     }
                 })
+                .listen('CallAnswered', (e) => {
+                    // Another receptionist answered — dismiss our ringing dialog.
+                    const state = useCallStore.getState();
+                    if (state.status === 'ringing' && state.unitId === e.unit_id) {
+                        state.reset();
+                    }
+                })
                 .listen('CallEnded', (e) => {
                     const state = useCallStore.getState();
                     if (state.unitId === e.unit_id) {
