@@ -61,8 +61,10 @@ export default function IncomingCallDialog() {
             room.on(RoomEvent.Disconnected, () => {
                 if (useCallStore.getState().room === room) useCallStore.getState().reset();
             });
-            await room.connect(livekitUrl, token);
+            // startAudio must be called before connect so the AudioContext is running
+            // before the caller's already-published audio track is subscribed.
             await room.startAudio();
+            await room.connect(livekitUrl, token);
             await room.localParticipant.setMicrophoneEnabled(true);
             setRoom(room);
             setActive();
